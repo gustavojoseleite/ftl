@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://relaxng.org/ns/structure/1.0"?>
+<package format="3">
+  <name>ftl_follower</name>
+  <version>0.1.0</version>
+  <description>Follow the leader: a pose estimator for every vehicle (GNSS + IMU + odometry in one shared local frame) and a follower that drives along the path of the vehicle ahead at a set gap. Knows no simulator.</description>
+  <maintainer email="gujoseleite@gmail.com">Gustavo</maintainer>
+  <license>Apache-2.0</license>
+
+  <!-- Only topics in the vehicle's namespace (odom, imu/data, gnss/fix in,
+       cmd_vel out), the vehicle's TF for the antenna offset, and the ftl/state
+       of the vehicle ahead. -->
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

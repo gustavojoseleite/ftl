@@ -2,11 +2,31 @@
 # copy this one, change what the experiment changes, and pass it with
 #   ros2 launch ftl_bringup ftl.launch.py params_file:=<path>
 #
-# "/**" matches the node whatever namespace it runs in, which is the leader's
-# (or a follower's, once there are follower nodes).
+# "/**/<node>" matches that node in whatever vehicle namespace it runs in.
 
-/**/road_follow:
+/**/road_follow:                # drives the leader
   ros__parameters:
-    route: lap        # lap | origin_bend | follow  (see road_follow.py)
-    laps: 0           # 0 = until stopped
-    speed: 3.0        # m/s on straights
+    route: lap                  # lap | origin_bend | follow  (see road_follow.py)
+    laps: 0                     # 0 = until stopped
+    speed: 3.0                  # m/s on straights
+
+/**/pose_estimator:             # every vehicle
+  ros__parameters:
+    # The datum of the shared frame. Every vehicle must use the same one; this
+    # is the spherical_coordinates origin of the citrus-farm worlds.
+    datum_lat: -20.9494
+    datum_lon: -48.4794
+    fix_samples: 25             # fixes averaged, standing still, for the start
+    fix_alpha: 0.05             # pull towards each fix: 4 s time constant at 5 Hz
+
+/**/follower:                   # each follower
+  ros__parameters:
+    gap: 10.0                   # m along the path, base to base (= the convoy's spacing)
+    min_gap: 5.0                # m: stop below this, whatever the vehicle ahead does
+    k_gap: 0.4                  # (m/s) per metre of gap error
+    v_max: 4.0                  # m/s; the tractor's plugin tops out at 4.2
+    accel: 1.0                  # m/s^2 ramp on the commanded speed
+    lookahead_min: 4.0          # m, pure pursuit at standstill
+    lookahead_gain: 1.0         # s: + this times the speed
+    lookahead_max: 10.0         # m
+    min_radius: 3.2             # m: the tractor's turning circle at full lock

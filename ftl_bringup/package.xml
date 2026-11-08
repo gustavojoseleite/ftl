@@ -13,6 +13,7 @@
        in ftl_gz, which depends on this package and never the reverse. -->
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
+  <exec_depend>ftl_follower</exec_depend>
   <exec_depend>road_follow</exec_depend>
 
   <export>

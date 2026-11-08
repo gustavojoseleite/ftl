@@ -40,6 +40,7 @@ def generate_launch_description():
                 "use_sim_time": "true",
                 "params_file": LaunchConfiguration("params_file"),
                 "leader": LaunchConfiguration("leader", default="pickup"),
+                "followers": LaunchConfiguration("followers", default="2"),
             }.items(),
         ),
     ])

@@ -6,6 +6,7 @@ platform it runs on (vehicles, worlds, driving) comes from `robot_description`, 
 `vehicle_control`, listed with this repository in the workspace's `projects/ftl/ftl.repos`.
 
 ```
+ftl_follower/     pose_estimator (every vehicle) and follower (each follower)
 road_follow/      drives a vehicle down the carreadores by its camera — FTL's leader driver
 ftl_bringup/      the FTL nodes and their parameters, as one launch. No simulator.
 ├── launch/ftl.launch.py
@@ -15,8 +16,8 @@ ftl_gz/           FTL test scenarios in Gazebo: world, leader, followers, where 
 └── launch/ftl_sim.launch.py  the scenario and the FTL nodes, in one command
 ```
 
-Follower nodes (`ftl_follower`), leader perception (`ftl_perception`) and messages of their own
-(`ftl_msgs`) join as packages here when they are written. A package moves out to a repository
+Leader perception (`ftl_perception`) and messages of its own (`ftl_msgs`) join as packages here
+when they are written. A package moves out to a repository
 of its own only if a second project needs it.
 
 ## The rule that keeps it portable
@@ -51,9 +52,53 @@ ros2 launch ftl_bringup ftl.launch.py params_file:=/workspace/exp_01.yaml
 ```
 
 The default scenario: a pickup leading two autonomous tractors down the main carreador of
-`citrus_farm.sdf`, ten metres apart; `road_follow` drives the pickup round the lap. There is no
-follower node yet, so the tractors stand still. Scenario arguments: `world`, `leader`,
-`follower`, `followers`, `spacing`, `yaw`, `gui`.
+`citrus_farm.sdf`, ten metres apart; `road_follow` drives the pickup round the lap and each
+tractor follows the machine in front of it. Scenario arguments: `world`, `leader`, `follower`,
+`followers`, `spacing`, `yaw`, `gui`.
+
+## How a follower follows
+
+```
+every vehicle    pose_estimator   odom + imu/data + gnss/fix  ->  ftl/state   (shared frame ftl_map)
+each follower    follower         own ftl/state + ftl/state of the vehicle ahead  ->  cmd_vel
+```
+
+**One frame for the whole convoy.** Each vehicle's odometry starts where that vehicle was
+spawned, so two odometries cannot be compared. `pose_estimator` puts every machine in the same
+east/north frame, metres from one datum (`datum_lat`/`datum_lon` in `ftl.yaml`, the origin of the
+citrus-farm worlds): heading from the IMU, which reports orientation in the world's ENU frame;
+position dead-reckoned from odometry along that heading and pulled towards the GNSS fix with a
+four-second time constant, the antenna's offset from `base_footprint` taken off first. Its output,
+`ftl/state` (`nav_msgs/Odometry`), is what would travel over the radio between real machines.
+
+**Path, not position.** `follower` keeps the positions of the vehicle ahead as a trail and steers
+by pure pursuit on the trail point one lookahead (4 m + 1 s × speed, at most 10 m) ahead of
+itself. Aiming at the vehicle itself would cut every corner of a carreador.
+
+**Gap along the path.** How far behind is the arc length of that trail between the two machines,
+so a bend does not read as being too close. Speed is the vehicle ahead's speed plus 0.4 (m/s)/m of
+gap error, ramped at 1 m/s², capped at 4 m/s, and zero below `min_gap` (5 m) or when either
+`ftl/state` is more than a second old. Each follower follows the one in front of it, so
+`tractor_2` follows `tractor_1`, not the pickup.
+
+Every number above is a parameter in `ftl_bringup/config/ftl.yaml`. For experiments, each follower
+also publishes `ftl/gap` (metres along the path) and `ftl/cross_track` (metres off it, left
+positive).
+
+**Measured** (2026-11-08, `citrus_farm.sdf`, pickup + 2 tractors, `road_follow` lap at 3 m/s, past
+the first fifth of each run):
+
+| | 222 m straight | 358 m with the 90° turn at the east boundary |
+|---|---|---|
+| gap, set to 10 m | 9.47 – 10.56 m, mean 10.02–10.03 | 8.30 – 10.83 m, mean 9.99–10.04 |
+| off the leader's path | mean 0.12–0.13 m, p95 0.30 m, max 0.42 m | mean 0.14 m, p95 0.36 m, max 0.66 m |
+| estimate vs Gazebo's true pose, at the end | 0.14 – 0.41 m | — |
+
+Unit tests for the trail, the control laws and the geodesy: `python3 -m pytest
+src/ftl/ftl_follower/test` (16 tests).
+
+The followers carry GNSS and IMU but no camera (`followers_camera:=false` in the convoy), so the
+convoy costs one camera however long it is.
 
 ## road_follow: driving by the edges of the road
 
