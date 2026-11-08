@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://relaxng.org/ns/structure/1.0"?>
+<package format="3">
+  <name>road_follow</name>
+  <version>0.1.0</version>
+  <description>Drives a vehicle down the carreadores of the citrus farm by its camera: finds the road edges, steers by pure pursuit, and takes the route's junctions from odometry. Used by FTL to drive the leader.</description>
+  <maintainer email="gujoseleite@gmail.com">Gustavo</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- Only topics: camera_front/*, odom, gnss/fix in, cmd_vel out, plus the
+       vehicle's own TF for the camera height. No simulator dependency. -->
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

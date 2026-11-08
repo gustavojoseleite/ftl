@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://relaxng.org/ns/structure/1.0"?>
+<package format="3">
+  <name>ftl_bringup</name>
+  <version>0.1.0</version>
+  <description>FTL nodes and their parameters, as one launch. Runs the same against the simulator or the real machines: nothing here depends on Gazebo.</description>
+  <maintainer email="gujoseleite@gmail.com">Gustavo</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- No simulator dependency, on purpose: the scenarios that need Gazebo live
+       in ftl_gz, which depends on this package and never the reverse. -->
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>road_follow</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

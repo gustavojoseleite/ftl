@@ -1,0 +1,12 @@
+# Parameters of the FTL nodes. One file per experiment is the intended use:
+# copy this one, change what the experiment changes, and pass it with
+#   ros2 launch ftl_bringup ftl.launch.py params_file:=<path>
+#
+# "/**" matches the node whatever namespace it runs in, which is the leader's
+# (or a follower's, once there are follower nodes).
+
+/**/road_follow:
+  ros__parameters:
+    route: lap        # lap | origin_bend | follow  (see road_follow.py)
+    laps: 0           # 0 = until stopped
+    speed: 3.0        # m/s on straights

@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://relaxng.org/ns/structure/1.0"?>
+<package format="3">
+  <name>ftl_gz</name>
+  <version>0.1.0</version>
+  <description>FTL test scenarios in Gazebo Harmonic: which world, which vehicles lead and follow, where they start. Brings up the simulation and, optionally, the FTL nodes from ftl_bringup.</description>
+  <maintainer email="gujoseleite@gmail.com">Gustavo</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- The only FTL package that knows a simulator exists. -->
+  <exec_depend>agro_gz_bringup</exec_depend>
+  <exec_depend>agro_gz_worlds</exec_depend>
+  <exec_depend>autonomous_tractor_gz</exec_depend>
+  <exec_depend>ftl_bringup</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>pickup_gz</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

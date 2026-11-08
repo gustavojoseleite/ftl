@@ -1,0 +1,15 @@
+# colcon output, in case someone builds from inside the repo
+build/
+install/
+log/
+
+__pycache__/
+*.py[cod]
+
+# Gazebo runtime leftovers
+.gz/
+*.log
+
+.vscode/
+.idea/
+*.swp
