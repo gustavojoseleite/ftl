@@ -10,8 +10,8 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <!-- The only FTL package that knows a simulator exists. -->
-  <exec_depend>agro_gz_bringup</exec_depend>
-  <exec_depend>agro_gz_worlds</exec_depend>
+  <exec_depend>agri_gz_bringup</exec_depend>
+  <exec_depend>agri_gz_worlds</exec_depend>
   <exec_depend>autonomous_tractor_gz</exec_depend>
   <exec_depend>ftl_bringup</exec_depend>
   <exec_depend>launch</exec_depend>

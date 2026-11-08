@@ -8,7 +8,7 @@ it with `ros2 launch ftl_bringup ftl.launch.py use_sim_time:=true`, which is
 what projects/ftl/compose.yaml does in its own container so they can be
 restarted without restarting Gazebo. ftl_sim.launch.py does both at once.
 
-The scenario is the convoy of agro_gz_bringup (one leader, N followers in a
+The scenario is the convoy of agri_gz_bringup (one leader, N followers in a
 line) with FTL's defaults: a pickup leading tractors down the main carreador
 of the citrus farm.
 """
@@ -21,7 +21,7 @@ from launch_ros.substitutions import FindPackageShare
 
 # (argument, FTL default, description). Forwarded to the convoy as they are.
 SCENARIO = (
-    ("world", "citrus_farm.sdf", "World file, relative to agro_gz_worlds/worlds."),
+    ("world", "citrus_farm.sdf", "World file, relative to agri_gz_worlds/worlds."),
     ("gui", "true", "false runs the simulator without its window."),
     ("leader", "pickup", "Vehicle type in front."),
     ("follower", "autonomous_tractor", "Vehicle type of every follower."),
@@ -38,7 +38,7 @@ def generate_launch_description():
 
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(PathJoinSubstitution([
-                FindPackageShare("agro_gz_bringup"), "launch", "convoy.launch.py",
+                FindPackageShare("agri_gz_bringup"), "launch", "convoy.launch.py",
             ])),
             launch_arguments={name: LaunchConfiguration(name) for name, _, _ in SCENARIO}.items(),
         ),

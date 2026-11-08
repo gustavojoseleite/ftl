@@ -19,7 +19,7 @@ a vehicle only through the topics in its namespace (cmd_vel, odom, imu/data,
 gnss/fix, camera_front/*) and its TF, so the same launch drives a convoy in
 Gazebo (ftl_gz brings that up) or on the farm. use_sim_time is the only switch.
 
-TF: each vehicle keeps its tree in its own namespace (see agro_gz_bringup's
+TF: each vehicle keeps its tree in its own namespace (see agri_gz_bringup's
 vehicles module), so a node reading TF takes the same two remaps.
 """
 

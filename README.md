@@ -2,7 +2,7 @@
 
 **Follow the leader**: a line of agricultural machines where the first is driven and the others
 follow it. This repository is the project's own code, the part no other project uses. The
-platform it runs on (vehicles, worlds, driving) comes from `robot_description`, `agro_gazebo` and
+platform it runs on (vehicles, worlds, driving) comes from `robot_description`, `agri_gazebo` and
 `vehicle_control`, listed with this repository in the workspace's `projects/ftl/ftl.repos`.
 
 ```
@@ -25,7 +25,7 @@ of its own only if a second project needs it.
 Only `ftl_gz` knows a simulator exists. `ftl_bringup` and every node talk to a vehicle through
 the topics in its namespace — `cmd_vel`, `odom`, `gnss/fix`, `imu/data`, `camera_front/*` — and
 its TF, so the same launch drives the convoy in Gazebo or on the farm; `use_sim_time` is the only
-switch. Dependencies point one way: `ftl_gz` → `ftl_bringup`, `ftl_gz` → `agro_gz_bringup`, never
+switch. Dependencies point one way: `ftl_gz` → `ftl_bringup`, `ftl_gz` → `agri_gz_bringup`, never
 back.
 
 Each vehicle keeps its TF tree in its own namespace (`/pickup/tf`, `/pickup/tf_static`), so a node

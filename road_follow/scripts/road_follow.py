@@ -9,7 +9,7 @@ Run it in a second shell inside the *running* container, so it shares the ROS
 graph with the simulator:
 
     docker exec -it ros2-ws-dev bash
-    ros2 launch agro_gz_bringup sim.launch.py robot:=autonomous_tractor \
+    ros2 launch agri_gz_bringup sim.launch.py robot:=autonomous_tractor \
         world:=citrus_farm.sdf                  # first shell
     ros2 run road_follow road_follow             # second shell
 
