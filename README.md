@@ -94,6 +94,11 @@ the first fifth of each run):
 | off the leader's path | mean 0.12–0.13 m, p95 0.30 m, max 0.42 m | mean 0.14 m, p95 0.36 m, max 0.66 m |
 | estimate vs Gazebo's true pose, at the end | 0.14 – 0.41 m | — |
 
+The vehicles are driven through ros2_control since 2026-11-11 (`control:=plugin` on
+`ftl_gz` brings back the Gazebo plugin these numbers were first taken with). The same
+experiment on both paths, and with four followers, is in `vehicle_control`'s README: the
+same gaps and the same tracking.
+
 Unit tests for the trail, the control laws and the geodesy: `python3 -m pytest
 src/ftl/ftl_follower/test` (16 tests).
 

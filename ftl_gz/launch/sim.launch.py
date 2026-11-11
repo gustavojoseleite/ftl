@@ -23,6 +23,7 @@ from launch_ros.substitutions import FindPackageShare
 SCENARIO = (
     ("world", "citrus_farm.sdf", "World file, relative to agri_gz_worlds/worlds."),
     ("gui", "true", "false runs the simulator without its window."),
+    ("control", "ros2_control", "ros2_control or plugin: how the vehicles are driven."),
     ("leader", "pickup", "Vehicle type in front."),
     ("follower", "autonomous_tractor", "Vehicle type of every follower."),
     ("followers", "2", "How many followers."),
