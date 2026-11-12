@@ -1,180 +1,202 @@
 # ftl
 
-**Follow the leader**: a line of agricultural machines where the first is driven and the others
-follow it. This repository is the project's own code, the part no other project uses. The
-platform it runs on (vehicles, worlds, driving) comes from `robot_description`, `agri_gazebo` and
-`vehicle_control`, listed with this repository in the workspace's `projects/ftl/ftl.repos`.
+**Follow the leader** (siga o líder): uma fila de máquinas agrícolas em que a primeira é dirigida e
+as outras a seguem. Este repositório é o código do próprio projeto, a parte que nenhum outro
+projeto usa. A plataforma em que ele roda (veículos, mundos, condução) vem de `robot_description`,
+`agri_gazebo` e `vehicle_control`, listados com este repositório no `projects/ftl/ftl.repos` do
+workspace.
 
 ```
-ftl_follower/     pose_estimator (every vehicle) and follower (each follower)
-road_follow/      drives a vehicle down the carreadores by its camera — FTL's leader driver
-ftl_bringup/      the FTL nodes and their parameters, as one launch. No simulator.
+ftl_follower/     pose_estimator (todo veículo) e follower (cada seguidor)
+road_follow/      dirige um veículo pelos carreadores pela câmera — o motorista do líder do FTL
+ftl_bringup/      os nós do FTL e seus parâmetros, num launch só. Sem simulador.
 ├── launch/ftl.launch.py
-└── config/ftl.yaml           one file per experiment is the intended use
-ftl_gz/           FTL test scenarios in Gazebo: world, leader, followers, where they start
-├── launch/sim.launch.py      the scenario only (world + convoy)
-└── launch/ftl_sim.launch.py  the scenario and the FTL nodes, in one command
+└── config/ftl.yaml           um arquivo por experimento é o uso pretendido
+ftl_gz/           cenários de teste do FTL no Gazebo: mundo, líder, seguidores, onde começam
+├── launch/sim.launch.py      só o cenário (mundo + comboio)
+└── launch/ftl_sim.launch.py  o cenário e os nós do FTL, num comando
 ```
 
-Leader perception (`ftl_perception`) and messages of its own (`ftl_msgs`) join as packages here
-when they are written. A package moves out to a repository
-of its own only if a second project needs it.
+## Pacotes novos
 
-## The rule that keeps it portable
-
-Only `ftl_gz` knows a simulator exists. `ftl_bringup` and every node talk to a vehicle through
-the topics in its namespace — `cmd_vel`, `odom`, `gnss/fix`, `imu/data`, `camera_front/*` — and
-its TF, so the same launch drives the convoy in Gazebo or on the farm; `use_sim_time` is the only
-switch. Dependencies point one way: `ftl_gz` → `ftl_bringup`, `ftl_gz` → `agri_gz_bringup`, never
-back.
-
-Each vehicle keeps its TF tree in its own namespace (`/pickup/tf`, `/pickup/tf_static`), so a node
-that reads TF takes the remaps `/tf → tf` and `/tf_static → tf_static`. `ftl.launch.py` does.
-
-## Running a test
-
-From the workspace root (the harness), in containers:
+A percepção do líder (`ftl_perception`) e mensagens próprias (`ftl_msgs`) entram aqui como pacotes
+quando forem escritas. Um pacote só sai para um repositório próprio se um segundo projeto precisar
+dele. O passo a passo — `ros2 pkg create` dentro do container, compilar, instalar `launch/` e
+`config/`, pôr no comboio — está no README da raiz do workspace, em "Criar um pacote novo". Em
+resumo:
 
 ```bash
-scripts/up.sh ftl                          # Gazebo + the FTL nodes, one container each
+./docker/run.sh                       # na raiz do workspace
+cd src/ftl
+ros2 pkg create ftl_perception --build-type ament_python --node-name detector \
+  --dependencies rclpy sensor_msgs
+cd /workspace && scripts/compile.sh ftl_perception && source install/setup.bash
+ros2 run ftl_perception detector
+```
+
+Para subir junto com o comboio, o nó entra no `ftl_bringup/launch/ftl.launch.py` (parâmetros no
+`ftl_bringup/config/ftl.yaml`) e o `ftl_bringup/package.xml` ganha
+`<exec_depend>ftl_perception</exec_depend>`. Um nó novo segue a regra abaixo: fala com o veículo só
+pelos tópicos do namespace dele.
+
+## A regra que o mantém portável
+
+Só o `ftl_gz` sabe que existe um simulador. O `ftl_bringup` e todo nó falam com um veículo pelos
+tópicos do seu namespace — `cmd_vel`, `odom`, `gnss/fix`, `imu/data`, `camera_front/*` — e pelo
+seu TF, então o mesmo launch dirige o comboio no Gazebo ou na fazenda; `use_sim_time` é a única
+chave. As dependências apontam para um lado só: `ftl_gz` → `ftl_bringup`, `ftl_gz` →
+`agri_gz_bringup`, nunca o contrário.
+
+Cada veículo mantém sua árvore de TF no próprio namespace (`/pickup/tf`, `/pickup/tf_static`),
+então um nó que lê TF leva os remaps `/tf → tf` e `/tf_static → tf_static`. O `ftl.launch.py`
+faz isso.
+
+## Rodando um teste
+
+Da raiz do workspace (o harness), em containers:
+
+```bash
+scripts/up.sh ftl                          # Gazebo + os nós do FTL, um container cada
 GUI=false FOLLOWERS=4 scripts/up.sh ftl -d
-docker compose -p ftl restart ftl          # new FTL code, Gazebo keeps running
+docker compose -p ftl restart ftl          # código novo do FTL, o Gazebo continua rodando
 docker compose -p ftl down
 ```
 
-The convoy needs about a minute to start: every vehicle's controllers come up in turn, and the
-pickup starts driving once `road_follow` sees the road. Check it with
+O comboio precisa de cerca de um minuto para partir: os controladores de cada veículo sobem um por
+vez, e a pickup começa a andar quando o `road_follow` enxerga a estrada. Confira com
 `docker compose -p ftl exec ftl bash -c 'ros2 control list_controllers -c /pickup/controller_manager'`
-(both `active`), and `ros2 topic echo /tractor_1/ftl/gap std_msgs/msg/Float64` for a follower.
+(os dois `active`), e `ros2 topic echo /tractor_1/ftl/gap std_msgs/msg/Float64` para um seguidor.
 
-Or by hand, inside `./docker/run.sh`:
+Ou à mão, dentro do `./docker/run.sh`:
 
 ```bash
-ros2 launch ftl_gz ftl_sim.launch.py                       # both at once
-ros2 launch ftl_gz sim.launch.py followers:=4 gui:=false   # the scenario alone…
-ros2 launch ftl_bringup ftl.launch.py use_sim_time:=true   # …and the nodes, in a second shell
+ros2 launch ftl_gz ftl_sim.launch.py                       # os dois de uma vez
+ros2 launch ftl_gz sim.launch.py followers:=4 gui:=false   # só o cenário…
+ros2 launch ftl_bringup ftl.launch.py use_sim_time:=true   # …e os nós, num segundo shell
 ros2 launch ftl_bringup ftl.launch.py params_file:=/workspace/exp_01.yaml
 ```
 
-The default scenario: a pickup leading two autonomous tractors down the main carreador of
-`citrus_farm.sdf`, ten metres apart; `road_follow` drives the pickup round the lap and each
-tractor follows the machine in front of it. Scenario arguments: `world`, `leader`, `follower`,
-`followers`, `spacing`, `yaw`, `gui`, `control` (`ros2_control`, the default, or `plugin`).
+O cenário padrão: uma pickup liderando dois tratores autônomos pelo carreador principal do
+`citrus_farm.sdf`, a dez metros um do outro; o `road_follow` leva a pickup pela volta e cada trator
+segue a máquina à sua frente. Argumentos do cenário: `world`, `leader`, `follower`, `followers`,
+`spacing`, `yaw`, `gui`, `control` (`ros2_control`, o padrão, ou `plugin`).
 
-## How a follower follows
+## Como um seguidor segue
 
 ```
-every vehicle    pose_estimator   odom + imu/data + gnss/fix  ->  ftl/state   (shared frame ftl_map)
-each follower    follower         own ftl/state + ftl/state of the vehicle ahead  ->  cmd_vel
+todo veículo     pose_estimator   odom + imu/data + gnss/fix  ->  ftl/state   (frame comum ftl_map)
+cada seguidor    follower         o próprio ftl/state + o ftl/state do veículo da frente  ->  cmd_vel
 ```
 
-**One frame for the whole convoy.** Each vehicle's odometry starts where that vehicle was
-spawned, so two odometries cannot be compared. `pose_estimator` puts every machine in the same
-east/north frame, metres from one datum (`datum_lat`/`datum_lon` in `ftl.yaml`, the origin of the
-citrus-farm worlds): heading from the IMU, which reports orientation in the world's ENU frame;
-position dead-reckoned from odometry along that heading and pulled towards the GNSS fix with a
-four-second time constant, the antenna's offset from `base_footprint` taken off first. Its output,
-`ftl/state` (`nav_msgs/Odometry`), is what would travel over the radio between real machines.
+**Um frame para o comboio inteiro.** A odometria de cada veículo começa onde aquele veículo foi
+criado, então duas odometrias não se comparam. O `pose_estimator` põe todas as máquinas no mesmo
+frame leste/norte, em metros a partir de um datum (`datum_lat`/`datum_lon` no `ftl.yaml`, a origem
+dos mundos de citros): rumo pela IMU, que reporta orientação no frame ENU do mundo; posição por
+dead-reckoning da odometria ao longo desse rumo, puxada para o fix do GNSS com constante de tempo
+de quatro segundos, descontado antes o deslocamento da antena em relação ao `base_footprint`. A
+saída, `ftl/state` (`nav_msgs/Odometry`), é o que viajaria pelo rádio entre máquinas reais.
 
-**Path, not position.** `follower` keeps the positions of the vehicle ahead as a trail and steers
-by pure pursuit on the trail point one lookahead (4 m + 1 s × speed, at most 10 m) ahead of
-itself. Aiming at the vehicle itself would cut every corner of a carreador.
+**Caminho, não posição.** O `follower` guarda as posições do veículo da frente como um rastro e
+esterça por pure pursuit no ponto do rastro um lookahead (4 m + 1 s × velocidade, no máximo 10 m) à
+frente de si. Mirar no próprio veículo cortaria toda curva de um carreador.
 
-**Gap along the path.** How far behind is the arc length of that trail between the two machines,
-so a bend does not read as being too close. Speed is the vehicle ahead's speed plus 0.4 (m/s)/m of
-gap error, ramped at 1 m/s², capped at 4 m/s, and zero below `min_gap` (5 m) or when either
-`ftl/state` is more than a second old. Each follower follows the one in front of it, so
-`tractor_2` follows `tractor_1`, not the pickup.
+**Distância ao longo do caminho.** Quão atrás ele está é o comprimento de arco daquele rastro entre
+as duas máquinas, então uma curva não é lida como estar perto demais. A velocidade é a do veículo
+da frente mais 0,4 (m/s)/m de erro de distância, em rampa de 1 m/s², limitada a 4 m/s, e zero
+abaixo de `min_gap` (5 m) ou quando qualquer um dos `ftl/state` tem mais de um segundo. Cada
+seguidor segue o da frente, então o `tractor_2` segue o `tractor_1`, e não a pickup.
 
-Every number above is a parameter in `ftl_bringup/config/ftl.yaml`. For experiments, each follower
-also publishes `ftl/gap` (metres along the path) and `ftl/cross_track` (metres off it, left
-positive).
+Todo número acima é um parâmetro no `ftl_bringup/config/ftl.yaml`. Para experimentos, cada seguidor
+também publica `ftl/gap` (metros ao longo do caminho) e `ftl/cross_track` (metros fora dele,
+esquerda positiva).
 
-**Measured** (2026-11-08, `citrus_farm.sdf`, pickup + 2 tractors, `road_follow` lap at 3 m/s, past
-the first fifth of each run):
+**Medido** (2026-11-08, `citrus_farm.sdf`, pickup + 2 tratores, volta do `road_follow` a 3 m/s,
+descontado o primeiro quinto de cada execução):
 
-| | 222 m straight | 358 m with the 90° turn at the east boundary |
+| | 222 m em reta | 358 m com a curva de 90° na divisa leste |
 |---|---|---|
-| gap, set to 10 m | 9.47 – 10.56 m, mean 10.02–10.03 | 8.30 – 10.83 m, mean 9.99–10.04 |
-| off the leader's path | mean 0.12–0.13 m, p95 0.30 m, max 0.42 m | mean 0.14 m, p95 0.36 m, max 0.66 m |
-| estimate vs Gazebo's true pose, at the end | 0.14 – 0.41 m | — |
+| distância, ajustada em 10 m | 9,47 – 10,56 m, média 10,02–10,03 | 8,30 – 10,83 m, média 9,99–10,04 |
+| fora do caminho do líder | média 0,12–0,13 m, p95 0,30 m, máx 0,42 m | média 0,14 m, p95 0,36 m, máx 0,66 m |
+| estimativa vs pose verdadeira do Gazebo, no fim | 0,14 – 0,41 m | — |
 
-The vehicles are driven through ros2_control since 2026-11-11 (`control:=plugin` on
-`ftl_gz` brings back the Gazebo plugin these numbers were first taken with). The same
-experiment on both paths, and with four followers, is in `vehicle_control`'s README: the
-same gaps and the same tracking.
+Os veículos são dirigidos pelo ros2_control desde 2026-11-11 (`control:=plugin` no `ftl_gz` traz
+de volta o plugin do Gazebo com que estes números foram tirados primeiro). O mesmo experimento nos
+dois caminhos, e com quatro seguidores, está no README do `vehicle_control`: as mesmas distâncias e
+o mesmo rastreamento.
 
-Unit tests for the trail, the control laws and the geodesy: `python3 -m pytest
-src/ftl/ftl_follower/test` (16 tests).
+Testes de unidade do rastro, das leis de controle e da geodésia: `python3 -m pytest
+src/ftl/ftl_follower/test` (16 testes), ou `scripts/compile.sh --test`.
 
-The followers carry GNSS and IMU but no camera (`followers_camera:=false` in the convoy), so the
-convoy costs one camera however long it is.
+Os seguidores levam GNSS e IMU, mas não câmera (`followers_camera:=false` no comboio), então o
+comboio custa uma câmera, qualquer que seja o tamanho dele.
 
-## road_follow: driving by the edges of the road
+## road_follow: dirigindo pelas bordas da estrada
 
 ```bash
-ros2 run road_follow road_follow                      # laps until stopped
+ros2 run road_follow road_follow                      # dá voltas até ser parado
 ros2 run road_follow road_follow --ros-args -p laps:=1 -p speed:=2.0
-ros2 run road_follow road_follow --ros-args -p route:=follow   # no route: just keep to the road
+ros2 run road_follow road_follow --ros-args -p route:=follow   # sem rota: só se mantém na estrada
 ```
 
-The tractor leaves the crossroads at the centre of the world heading east, takes the main
-carreador out to the east boundary, turns left, runs 244 m up the boundary and round its 24 m
-corner, turns left again onto the carreador that comes back down the middle of the property, and
-arrives at the crossroads it started from. **1109 m, a quarter of the network**, and then it does
-it again, coming back within **1.8 m** of the world origin each time — a corner taken close rather
-than a dot hit, because an Ackermann machine cannot arrive at a point and leave it in another
-direction.
+O trator sai do cruzamento no centro do mundo rumo leste, pega o carreador principal até a divisa
+leste, vira à esquerda, percorre 244 m divisa acima e contorna a sua curva de 24 m, vira à esquerda
+de novo no carreador que volta pelo meio da propriedade, e chega ao cruzamento de onde partiu.
+**1109 m, um quarto da rede**, e então faz de novo, voltando a menos de **1,8 m** da origem do mundo
+a cada vez — uma curva feita de perto, e não um ponto acertado, porque uma máquina Ackermann não
+consegue chegar a um ponto e sair dele em outra direção.
 
-**The steering is the camera and nothing else.** What it follows is the **running surface**: a
-carreador is 12 m of bare earth with 7 m of graded track down the middle, and that inner strip is
-a few counts lighter than the shoulders either side, so its two edges sit at ±3.5 m and their
-midpoint is the centreline. A pair of edges is better than one mark — the midpoint is the middle
-of the road whether or not the machine is square to it, and a junction, where the joining road's
-surface widens the strip past 7 m, fails the spacing test and is rejected rather than followed.
-Where one edge is lost the other still fixes the centre 3.5 m to its side, on a tighter gate.
+**A direção é a câmera e nada mais.** O que ela segue é a **pista de rodagem**: um carreador são
+12 m de terra nua com 7 m de pista patrolada no meio, e essa faixa interna é algumas contagens mais
+clara que os acostamentos dos dois lados, então as duas bordas ficam a ±3,5 m e o ponto médio delas
+é a linha central. Um par de bordas é melhor que uma marca — o ponto médio é o meio da estrada
+esteja a máquina alinhada com ela ou não, e um entroncamento, onde a pista da estrada que chega
+alarga a faixa para além de 7 m, falha no teste de espaçamento e é rejeitado em vez de seguido.
+Quando uma borda se perde, a outra ainda fixa o centro 3,5 m ao lado dela, com uma janela mais
+estreita.
 
-Nothing here is a threshold that depends on the weather. The step from surface to shoulder is
-**five to eight counts** of red, and the surface itself changes with the light and the slope — 176
-counts 8 m ahead, 156 at 14 m — so the row is smoothed over five pixels and compared against its
-**own median** across a 10 m window: the surface is most of that window by construction, so the
-median is the surface. The two bands look 6 m and 14 m ahead, and which pixel row that is comes
-from `/camera_front/camera_info` and the camera's height in `tf`, so a camera moved in the
-description moves the bands with it. Pure pursuit on the far band, a small pull on the near one,
-and out goes `angular.z = speed × curvature`.
+Nada aqui é um limiar que dependa do tempo. O degrau da pista para o acostamento é de **cinco a
+oito contagens** de vermelho, e a própria pista muda com a luz e a inclinação — 176 contagens a 8 m
+à frente, 156 a 14 m —, então a linha é suavizada em cinco pixels e comparada com a **sua própria
+mediana** numa janela de 10 m: por construção a pista é a maior parte daquela janela, então a
+mediana é a pista. As duas faixas olham 6 m e 14 m à frente, e qual linha de pixels é essa vem do
+`/camera_front/camera_info` e da altura da câmera no `tf`, então uma câmera movida na descrição
+move as faixas junto. Pure pursuit na faixa distante, um pequeno puxão na próxima, e sai
+`angular.z = velocidade × curvatura`.
 
-`route:=` picks which of them: `lap` is the circuit above, `follow` is no route at all — no
-junctions, no turns, the machine simply keeps to whatever carreador it is standing on until it is
-stopped, which is what a road with one way out wants — and `origin_bend` runs 43 m east from the
-crossroads and bends onto the 30° road. The last two are what the films in
-`docs/` of the workspace repository were shot on.
+O `route:=` escolhe qual delas: `lap` é o circuito acima, `follow` é rota nenhuma — sem
+entroncamentos, sem curvas, a máquina simplesmente se mantém em qualquer carreador em que esteja
+até ser parada, que é o que uma estrada com uma só saída quer — e `origin_bend` anda 43 m para leste
+a partir do cruzamento e entra na estrada de 30°. As duas últimas são aquelas em que os vídeos do
+`docs/` do repositório do workspace foram filmados.
 
-**How far a turn goes comes from the route's own directions**, not from a number written beside
-it. Every turn used to run until the machine had swung 90°, which is right for three sides of a
-square and was never noticed until a 30° turn was asked for: the tractor turned 90°, left the
-carreador and drove into the talhão at a confident 3 m/s. The sweep is now the angle between the
-leg being left and the leg being joined, so it cannot disagree with the route it belongs to.
+**Quanto uma curva gira vem das próprias direções da rota**, e não de um número escrito ao lado.
+Toda curva girava até a máquina ter virado 90°, o que é certo para três lados de um quadrado e
+nunca foi notado até alguém pedir uma curva de 30°: o trator virou 90°, saiu do carreador e entrou
+no talhão a confiantes 3 m/s. O giro agora é o ângulo entre o trecho que se deixa e o trecho que se
+pega, então não pode discordar da rota a que pertence.
 
-What odometry and the GNSS are for is the one question the road cannot answer: at a junction where
-two carreadores cross, which of them is mine. That is a map question, not a perception one. So the
-route carries the three turns and the machine's own position says when one has arrived — and
-**position here is the receiver on the mast, smoothed by odometry**, not odometry alone. Odometry
-alone was tried: one lap of this circuit came back **9 m out**, which is ordinary for a slipping
-Ackermann machine and quite enough to start a turn in the wrong place by the third lap. The fix
-does not drift, so the two are fused the obvious way round — odometry for smoothness between
-fixes, the fix for where that smoothness is anchored, four seconds of time constant. The
-correction it applies is reported at the end of every lap, and it is not small: **−22.5 m** of x
-on the lap measured here, all of it odometry error the receiver took back out. Without it this
-circuit does not survive its third lap.
+Para o que servem a odometria e o GNSS é a única pergunta que a estrada não responde: num
+entroncamento onde dois carreadores se cruzam, qual deles é o meu. Isso é uma pergunta de mapa, não
+de percepção. Então a rota carrega as três curvas e a posição da própria máquina diz quando uma
+chegou — e **a posição aqui é o receptor no mastro, suavizado pela odometria**, e não a odometria
+sozinha. A odometria sozinha foi tentada: uma volta deste circuito voltou **9 m fora**, o que é
+normal para uma máquina Ackermann que patina e mais que suficiente para começar uma curva no lugar
+errado na terceira volta. O fix não deriva, então os dois são fundidos do jeito óbvio — a odometria
+para a suavidade entre fixes, o fix para onde essa suavidade se ancora, quatro segundos de constante
+de tempo. A correção aplicada é reportada no fim de cada volta, e não é pequena: **−22,5 m** em x na
+volta medida aqui, todo erro de odometria que o receptor tirou. Sem isso este circuito não
+sobrevive à terceira volta.
 
-**Two marks were tried down the middle of the road before this, and both came out.** First a
-30 cm white centreline, added as a reference: the follower tracked it beautifully until it did
-not — twice it turned down the 30° road at x = 48 and drove into the talhão, because a joining
-road's surface was laid over the line it joined and buried fourteen metres of it (see the z-order
-note below, which is fixed). Then the line came out of the worlds for the reason it never should
-have gone in: nobody paints a farm track. Then the wheel ruts every carreador wore, which are at
-least a thing a dirt road has — except that as two hard-edged stripes 2.1 m apart they read as
-paint as well, and matched the bitola of no machine on the property. They came out too.
+**Duas marcas no meio da estrada foram tentadas antes disso, e as duas saíram.** Primeiro uma
+linha central branca de 30 cm, acrescentada como referência: o seguidor a acompanhava muito bem
+até deixar de acompanhar — duas vezes entrou na estrada de 30° em x = 48 e foi para o talhão,
+porque a pista de uma estrada que chegava estava por cima da linha em que ela chegava e enterrava
+catorze metros dela (veja a nota sobre a ordem em z no README do `agri_gazebo`, que está
+corrigida). Depois a linha saiu dos mundos pelo motivo pelo qual nunca deveria ter entrado:
+ninguém pinta uma estrada de fazenda. Depois os sulcos de roda que todo carreador tinha, que pelo
+menos são algo que uma estrada de terra tem — só que, como duas faixas de borda dura a 2,1 m uma
+da outra, também pareciam tinta, e não batiam com a bitola de máquina nenhuma da propriedade.
+Saíram também.
 
-What is left is the road itself, and it is the better target. Nothing on a carreador here is drawn
-that a graded road would not have.
+O que sobra é a própria estrada, e ela é o alvo melhor. Nada num carreador aqui é desenhado que uma
+estrada patrolada não teria.
