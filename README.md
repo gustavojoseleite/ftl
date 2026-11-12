@@ -42,6 +42,11 @@ docker compose -p ftl restart ftl          # new FTL code, Gazebo keeps running
 docker compose -p ftl down
 ```
 
+The convoy needs about a minute to start: every vehicle's controllers come up in turn, and the
+pickup starts driving once `road_follow` sees the road. Check it with
+`docker compose -p ftl exec ftl bash -c 'ros2 control list_controllers -c /pickup/controller_manager'`
+(both `active`), and `ros2 topic echo /tractor_1/ftl/gap std_msgs/msg/Float64` for a follower.
+
 Or by hand, inside `./docker/run.sh`:
 
 ```bash
@@ -54,7 +59,7 @@ ros2 launch ftl_bringup ftl.launch.py params_file:=/workspace/exp_01.yaml
 The default scenario: a pickup leading two autonomous tractors down the main carreador of
 `citrus_farm.sdf`, ten metres apart; `road_follow` drives the pickup round the lap and each
 tractor follows the machine in front of it. Scenario arguments: `world`, `leader`, `follower`,
-`followers`, `spacing`, `yaw`, `gui`.
+`followers`, `spacing`, `yaw`, `gui`, `control` (`ros2_control`, the default, or `plugin`).
 
 ## How a follower follows
 
