@@ -65,7 +65,7 @@ docker compose -p ftl down
 O comboio precisa de cerca de um minuto para partir: os controladores de cada veículo sobem um por
 vez, e a pickup começa a andar quando o `road_follow` enxerga a estrada. Confira com
 `docker compose -p ftl exec ftl bash -c 'ros2 control list_controllers -c /pickup/controller_manager'`
-(os dois `active`), e `ros2 topic echo /tractor_1/ftl/gap std_msgs/msg/Float64` para um seguidor.
+(os três `active`), e `ros2 topic echo /tractor_1/ftl/gap std_msgs/msg/Float64` para um seguidor.
 
 Ou à mão, dentro do `./docker/run.sh`:
 
@@ -79,7 +79,7 @@ ros2 launch ftl_bringup ftl.launch.py params_file:=/workspace/exp_01.yaml
 O cenário padrão: uma pickup liderando dois tratores autônomos pelo carreador principal do
 `citrus_farm.sdf`, a dez metros um do outro; o `road_follow` leva a pickup pela volta e cada trator
 segue a máquina à sua frente. Argumentos do cenário: `world`, `leader`, `follower`, `followers`,
-`spacing`, `yaw`, `gui`, `control` (`ros2_control`, o padrão, ou `plugin`).
+`spacing`, `yaw`, `gui`.
 
 ## Como um seguidor segue
 
@@ -119,10 +119,10 @@ descontado o primeiro quinto de cada execução):
 | fora do caminho do líder | média 0,12–0,13 m, p95 0,30 m, máx 0,42 m | média 0,14 m, p95 0,36 m, máx 0,66 m |
 | estimativa vs pose verdadeira do Gazebo, no fim | 0,14 – 0,41 m | — |
 
-Os veículos são dirigidos pelo ros2_control desde 2026-11-11 (`control:=plugin` no `ftl_gz` traz
-de volta o plugin do Gazebo com que estes números foram tirados primeiro). O mesmo experimento nos
-dois caminhos, e com quatro seguidores, está no README do `vehicle_control`: as mesmas distâncias e
-o mesmo rastreamento.
+Os veículos são dirigidos pelo ros2_control desde 2026-11-11, com tração nas quatro desde
+2026-11-12; os números acima foram tirados primeiro com o plugin do Gazebo, que saiu. O mesmo
+experimento nos dois caminhos, com quatro seguidores e na volta completa de 1109 m (a pickup volta
+a 2,07 m da origem, distância média de 10,00 / 10,02 m), está no README do `vehicle_control`.
 
 Testes de unidade do rastro, das leis de controle e da geodésia: `python3 -m pytest
 src/ftl/ftl_follower/test` (16 testes), ou `scripts/compile.sh --test`.
@@ -141,8 +141,8 @@ ros2 run road_follow road_follow --ros-args -p route:=follow   # sem rota: só s
 O trator sai do cruzamento no centro do mundo rumo leste, pega o carreador principal até a divisa
 leste, vira à esquerda, percorre 244 m divisa acima e contorna a sua curva de 24 m, vira à esquerda
 de novo no carreador que volta pelo meio da propriedade, e chega ao cruzamento de onde partiu.
-**1109 m, um quarto da rede**, e então faz de novo, voltando a menos de **1,8 m** da origem do mundo
-a cada vez — uma curva feita de perto, e não um ponto acertado, porque uma máquina Ackermann não
+**1109 m, um quarto da rede**, e então faz de novo, voltando a cerca de **2 m** da origem do mundo
+a cada vez (1,8 m com o antigo plugin do Gazebo, 2,07 m com a tração nas quatro do ros2_control) — uma curva feita de perto, e não um ponto acertado, porque uma máquina Ackermann não
 consegue chegar a um ponto e sair dele em outra direção.
 
 **A direção é a câmera e nada mais.** O que ela segue é a **pista de rodagem**: um carreador são
@@ -184,7 +184,8 @@ normal para uma máquina Ackermann que patina e mais que suficiente para começa
 errado na terceira volta. O fix não deriva, então os dois são fundidos do jeito óbvio — a odometria
 para a suavidade entre fixes, o fix para onde essa suavidade se ancora, quatro segundos de constante
 de tempo. A correção aplicada é reportada no fim de cada volta, e não é pequena: **−22,5 m** em x na
-volta medida aqui, todo erro de odometria que o receptor tirou. Sem isso este circuito não
+volta medida com o plugin do Gazebo, todo erro de odometria que o receptor tirou; com o
+ros2_control e a tração nas quatro foi (−7,8, −1,6) m. Sem isso este circuito não
 sobrevive à terceira volta.
 
 **Duas marcas no meio da estrada foram tentadas antes disso, e as duas saíram.** Primeiro uma
