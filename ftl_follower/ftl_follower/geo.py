@@ -1,4 +1,5 @@
-"""Latitude and longitude to metres, in a frame every vehicle shares.
+"""
+Latitude and longitude to metres, in a frame every vehicle shares.
 
 Each vehicle's odometry starts wherever that vehicle was spawned, so two
 odometries cannot be compared. A GNSS fix can: turned into east/north metres
@@ -11,7 +12,8 @@ import math
 
 
 def metres_per_degree(lat_deg):
-    """(metres per degree of latitude, metres per degree of longitude) on WGS84.
+    """
+    (metres per degree of latitude, metres per degree of longitude) on WGS84.
 
     The usual spherical shortcut is 0.4% out at this latitude, which over a
     280 m carreador is a metre — the same series road_follow uses.

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Where this vehicle is, in the frame the whole convoy shares.
+"""
+Where this vehicle is, in the frame the whole convoy shares.
 
     ros2 run ftl_follower pose_estimator --ros-args -r __ns:=/tractor_1
 
@@ -24,29 +25,28 @@ either: a metre of noise at 5 Hz is a wheel that never stops twitching.
 
 import math
 
+from ftl_follower.geo import LocalFrame, yaw_from_quaternion
+from nav_msgs.msg import Odometry
 import rclpy
 from rclpy.executors import ExternalShutdownException
-from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from sensor_msgs.msg import Imu, NavSatFix
 from tf2_ros import Buffer, TransformListener
 
-from ftl_follower.geo import LocalFrame, yaw_from_quaternion
-
 
 class PoseEstimator(Node):
     def __init__(self):
-        super().__init__("pose_estimator")
+        super().__init__('pose_estimator')
 
         def param(name, default):
             return self.declare_parameter(name, default).value
 
-        self.frame = LocalFrame(param("datum_lat", -20.9494), param("datum_lon", -48.4794))
-        self.fix_samples = param("fix_samples", 25)
-        self.fix_alpha = param("fix_alpha", 0.05)
-        self.base_frame = param("base_frame", "base_footprint")
-        self.gnss_frame = param("gnss_frame", "gnss_link")
-        self.map_frame = param("map_frame", "ftl_map")
+        self.frame = LocalFrame(param('datum_lat', -20.9494), param('datum_lon', -48.4794))
+        self.fix_samples = param('fix_samples', 25)
+        self.fix_alpha = param('fix_alpha', 0.05)
+        self.base_frame = param('base_frame', 'base_footprint')
+        self.gnss_frame = param('gnss_frame', 'gnss_link')
+        self.map_frame = param('map_frame', 'ftl_map')
 
         self.yaw = None
         self.speed = 0.0
@@ -58,23 +58,26 @@ class PoseEstimator(Node):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
-        self.pub = self.create_publisher(Odometry, "ftl/state", 10)
-        self.create_subscription(Imu, "imu/data", self._on_imu, 50)
-        self.create_subscription(Odometry, "odom", self._on_odom, 20)
-        self.create_subscription(NavSatFix, "gnss/fix", self._on_fix, 10)
-        self.create_timer(1.0 / param("rate", 20.0), self._publish)
+        self.pub = self.create_publisher(Odometry, 'ftl/state', 10)
+        self.create_subscription(Imu, 'imu/data', self._on_imu, 50)
+        self.create_subscription(Odometry, 'odom', self._on_odom, 20)
+        self.create_subscription(NavSatFix, 'gnss/fix', self._on_fix, 10)
+        self.create_timer(1.0 / param('rate', 20.0), self._publish)
         self.create_timer(0.5, self._lookup_antenna)
 
     def _lookup_antenna(self):
         if self.antenna is not None:
             return
         try:
-            tf = self.tf_buffer.lookup_transform(self.base_frame, self.gnss_frame, rclpy.time.Time())
+            tf = self.tf_buffer.lookup_transform(
+                self.base_frame, self.gnss_frame, rclpy.time.Time())
         except Exception:                                  # noqa: BLE001 — not there yet
             return
         t = tf.transform.translation
         self.antenna = (t.x, t.y)
-        self.get_logger().info(f"antena GNSS a {t.x:.3f} m à frente, {t.y:.3f} m à esquerda da base")
+        self.get_logger().info(
+            f'antena GNSS a {t.x:.3f} m à frente, '
+            f'{t.y:.3f} m à esquerda da base')
 
     def _on_imu(self, msg):
         q = msg.orientation
@@ -107,8 +110,8 @@ class PoseEstimator(Node):
                 self.xy = (sum(m[0] for m in self.seen) / len(self.seen),
                            sum(m[1] for m in self.seen) / len(self.seen))
                 self.get_logger().info(
-                    f"posição inicial ({self.xy[0]:.2f}, {self.xy[1]:.2f}) m do datum, "
-                    f"rumo {math.degrees(self.yaw):.1f} graus")
+                    f'posição inicial ({self.xy[0]:.2f}, {self.xy[1]:.2f}) m do datum, '
+                    f'rumo {math.degrees(self.yaw):.1f} graus')
             return
         a = self.fix_alpha
         self.xy = (self.xy[0] + (meas[0] - self.xy[0]) * a,
@@ -140,5 +143,5 @@ def main():
         rclpy.try_shutdown()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

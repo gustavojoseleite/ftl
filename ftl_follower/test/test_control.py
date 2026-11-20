@@ -1,10 +1,9 @@
 import math
 
-import pytest
-
 from ftl_follower.control import (clamp_curvature, gap_speed, lookahead,
                                   pure_pursuit_curvature, ramp)
 from ftl_follower.geo import LocalFrame, wrap, yaw_from_quaternion
+import pytest
 
 
 def test_gap_speed_matches_the_vehicle_ahead_at_the_set_gap():

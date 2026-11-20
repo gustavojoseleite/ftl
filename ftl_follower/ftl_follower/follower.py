@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Drive along the path of the vehicle ahead, a set distance behind it.
+"""
+Drive along the path of the vehicle ahead, a set distance behind it.
 
     ros2 run ftl_follower follower --ros-args -r __ns:=/tractor_1 -p ahead:=/pickup
 
@@ -22,19 +23,16 @@ Published besides cmd_vel, for experiments: ftl/gap (metres along the path)
 and ftl/cross_track (metres off the path, positive = left of it).
 """
 
-import math
-
-import rclpy
-from rclpy.executors import ExternalShutdownException
-from geometry_msgs.msg import Twist
-from nav_msgs.msg import Odometry
-from rclpy.node import Node
-from std_msgs.msg import Float64
-
 from ftl_follower.control import (clamp_curvature, gap_speed, lookahead,
                                   pure_pursuit_curvature, ramp)
 from ftl_follower.geo import yaw_from_quaternion
 from ftl_follower.trail import Trail
+from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
+import rclpy
+from rclpy.executors import ExternalShutdownException
+from rclpy.node import Node
+from std_msgs.msg import Float64
 
 
 def _state(msg):
@@ -44,41 +42,43 @@ def _state(msg):
 
 class Follower(Node):
     def __init__(self):
-        super().__init__("follower")
+        super().__init__('follower')
 
         def param(name, default):
             return self.declare_parameter(name, default).value
 
-        ahead = param("ahead", "")
+        ahead = param('ahead', '')
         if not ahead:
-            raise SystemExit("follower: o parâmetro 'ahead' (namespace do veículo da frente) é obrigatório")
-        self.gap_desired = param("gap", 10.0)
-        self.min_gap = param("min_gap", 5.0)
-        self.k_gap = param("k_gap", 0.4)
-        self.v_max = param("v_max", 4.0)
-        self.accel = param("accel", 1.0)
-        self.ld_min = param("lookahead_min", 4.0)
-        self.ld_gain = param("lookahead_gain", 1.0)
-        self.ld_max = param("lookahead_max", 10.0)
-        self.min_radius = param("min_radius", 3.2)
-        self.stale_after = param("stale_after", 1.0)
-        rate = param("rate", 20.0)
+            raise SystemExit("follower: o parâmetro 'ahead' "
+                             '(namespace do veículo da frente) é obrigatório')
+        self.gap_desired = param('gap', 10.0)
+        self.min_gap = param('min_gap', 5.0)
+        self.k_gap = param('k_gap', 0.4)
+        self.v_max = param('v_max', 4.0)
+        self.accel = param('accel', 1.0)
+        self.ld_min = param('lookahead_min', 4.0)
+        self.ld_gain = param('lookahead_gain', 1.0)
+        self.ld_max = param('lookahead_max', 10.0)
+        self.min_radius = param('min_radius', 3.2)
+        self.stale_after = param('stale_after', 1.0)
+        rate = param('rate', 20.0)
         self.dt = 1.0 / rate
 
-        self.trail = Trail(param("trail_spacing", 0.3))
+        self.trail = Trail(param('trail_spacing', 0.3))
         self.hint = 0
         self.me = self.ahead = None
         self.me_t = self.ahead_t = None
         self.v = 0.0
         self.last_log = None
 
-        self.cmd = self.create_publisher(Twist, "cmd_vel", 10)
-        self.gap_pub = self.create_publisher(Float64, "ftl/gap", 10)
-        self.xte_pub = self.create_publisher(Float64, "ftl/cross_track", 10)
-        self.create_subscription(Odometry, "ftl/state", self._on_me, 10)
-        self.create_subscription(Odometry, f"{ahead.rstrip('/')}/ftl/state", self._on_ahead, 10)
+        self.cmd = self.create_publisher(Twist, 'cmd_vel', 10)
+        self.gap_pub = self.create_publisher(Float64, 'ftl/gap', 10)
+        self.xte_pub = self.create_publisher(Float64, 'ftl/cross_track', 10)
+        self.create_subscription(Odometry, 'ftl/state', self._on_me, 10)
+        self.create_subscription(
+            Odometry, f"{ahead.rstrip('/')}/ftl/state", self._on_ahead, 10)
         self.create_timer(self.dt, self._tick)
-        self.get_logger().info(f"seguindo {ahead} a {self.gap_desired:.1f} m")
+        self.get_logger().info(f'seguindo {ahead} a {self.gap_desired:.1f} m')
 
     def _on_me(self, msg):
         self.me, self.me_t = _state(msg), self.get_clock().now()
@@ -128,7 +128,9 @@ class Follower(Node):
 
         if self.last_log is None or (now - self.last_log).nanoseconds > 5e9:
             self.last_log = now
-            self.get_logger().info(f"gap {gap:5.1f} m  v {self.v:4.2f} m/s  fora da trilha {xte:+.2f} m")
+            self.get_logger().info(
+                f'gap {gap:5.1f} m  v {self.v:4.2f} m/s  '
+                f'fora da trilha {xte:+.2f} m')
 
 
 def main():
@@ -143,5 +145,5 @@ def main():
         rclpy.try_shutdown()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

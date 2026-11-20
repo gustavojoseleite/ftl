@@ -16,23 +16,15 @@ ftl_gz/           cenários de teste do FTL no Gazebo: mundo, líder, seguidores
 ├── launch/sim.launch.py      só o cenário (mundo + comboio)
 └── launch/ftl_sim.launch.py  o cenário e os nós do FTL, num comando
 ftl_msgs/         as mensagens que ligam os módulos da solução
+ftl_template/     o pacote modelo: copie-o para começar um pacote novo
 ```
 
 ## Pacotes novos
 
-A percepção do líder (`ftl_perception`) entra aqui como pacote quando for escrita. Um pacote só sai para um repositório próprio se um segundo projeto precisar
-dele. O passo a passo — `ros2 pkg create` dentro do container, compilar, instalar `launch/` e
-`config/`, pôr no comboio — está no README da raiz do workspace, em "Criar um pacote novo". Em
-resumo:
-
-```bash
-./docker/run.sh                       # na raiz do workspace
-cd src/ftl
-ros2 pkg create ftl_perception --build-type ament_python --node-name detector \
-  --dependencies rclpy sensor_msgs
-cd /workspace && scripts/compile.sh ftl_perception && source install/setup.bash
-ros2 run ftl_perception detector
-```
+A percepção do líder (`ftl_perception`) entra aqui como pacote quando for escrita. Um pacote só sai
+para um repositório próprio se um segundo projeto precisar dele. Todo pacote novo nasce de uma cópia
+do `ftl_template/`, que já traz a lógica sem ROS, o nó fino, os testes e o lint; o passo a passo
+(copiar, trocar o nome, pôr no comboio) e os padrões a seguir estão no `CONTRIBUTING.md`.
 
 Para subir junto com o comboio, o nó entra no `ftl_bringup/launch/ftl.launch.py` (parâmetros no
 `ftl_bringup/config/ftl.yaml`) e o `ftl_bringup/package.xml` ganha
@@ -136,8 +128,8 @@ Os veículos são dirigidos pelo ros2_control desde 2026-11-11, com tração nas
 experimento nos dois caminhos, com quatro seguidores e na volta completa de 1109 m (a pickup volta
 a 2,07 m da origem, distância média de 10,00 / 10,02 m), está no README do `vehicle_control`.
 
-Testes de unidade do rastro, das leis de controle e da geodésia: `python3 -m pytest
-src/ftl/ftl_follower/test` (16 testes), ou `scripts/compile.sh --test`.
+Testes do rastro, das leis de controle e da geodésia: `scripts/test.sh ftl_follower`, que roda os
+16 testes de unidade, o lint e a guarda.
 
 Os seguidores levam GNSS e IMU, mas não câmera (`followers_camera:=false` no comboio), então o
 comboio custa uma câmera, qualquer que seja o tamanho dele.

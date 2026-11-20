@@ -4,7 +4,8 @@ import math
 
 
 def gap_speed(v_ahead, gap, desired, k_gap, v_max, min_gap):
-    """Speed that holds `desired` metres behind the vehicle ahead.
+    """
+    Speed that holds `desired` metres behind the vehicle ahead.
 
     The vehicle ahead's own speed, plus a pull proportional to the gap error:
     too far back and it closes, too close and it eases off. Below `min_gap` it
