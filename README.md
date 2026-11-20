@@ -15,12 +15,12 @@ ftl_bringup/      os nós do FTL e seus parâmetros, num launch só. Sem simulad
 ftl_gz/           cenários de teste do FTL no Gazebo: mundo, líder, seguidores, onde começam
 ├── launch/sim.launch.py      só o cenário (mundo + comboio)
 └── launch/ftl_sim.launch.py  o cenário e os nós do FTL, num comando
+ftl_msgs/         as mensagens que ligam os módulos da solução
 ```
 
 ## Pacotes novos
 
-A percepção do líder (`ftl_perception`) e mensagens próprias (`ftl_msgs`) entram aqui como pacotes
-quando forem escritas. Um pacote só sai para um repositório próprio se um segundo projeto precisar
+A percepção do líder (`ftl_perception`) entra aqui como pacote quando for escrita. Um pacote só sai para um repositório próprio se um segundo projeto precisar
 dele. O passo a passo — `ros2 pkg create` dentro do container, compilar, instalar `launch/` e
 `config/`, pôr no comboio — está no README da raiz do workspace, em "Criar um pacote novo". Em
 resumo:
@@ -38,6 +38,18 @@ Para subir junto com o comboio, o nó entra no `ftl_bringup/launch/ftl.launch.py
 `ftl_bringup/config/ftl.yaml`) e o `ftl_bringup/package.xml` ganha
 `<exec_depend>ftl_perception</exec_depend>`. Um nó novo segue a regra abaixo: fala com o veículo só
 pelos tópicos do namespace dele.
+
+## Mensagens (ftl_msgs)
+
+| Mensagem | Para quê | Publicada por |
+|---|---|---|
+| TrackedVehicle | estimativa do veículo da frente (antena, velocidade, fontes) | ftl_fusion |
+| Rail, com RailPoint | trilho virtual do líder | ftl_trajectory |
+| Progress | progresso no trilho e liberação de waypoints | ftl_trajectory |
+| FollowerStatus | estado do supervisor, erros e fontes | ftl_supervisor |
+| V2VEnvelope | envelope do canal V2V (fix, estado ou trilho) | ftl_comms |
+
+Os pacotes que publicam essas mensagens ainda não existem e chegarão nas fases F3 a F8.
 
 ## A regra que o mantém portável
 
