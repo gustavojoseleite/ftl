@@ -1,4 +1,5 @@
-"""The path the vehicle ahead has driven, as a polyline with arc length.
+"""
+The path the vehicle ahead has driven, as a polyline with arc length.
 
 A follower does not aim at the vehicle ahead: it drives where that vehicle
 drove. Aiming straight at it cuts every corner, and on a carreador that leaves
@@ -34,7 +35,8 @@ class Trail:
             self.ss.append(self.ss[-1] + d)
 
     def seed_line(self, a, b):
-        """Start the trail as the straight line from a to b.
+        """
+        Start the trail as the straight line from a to b.
 
         At the start the vehicle ahead has driven nothing yet. The convoy is
         spawned in a line on the road, so the straight line from the follower
@@ -46,7 +48,8 @@ class Trail:
             self.append(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
 
     def project(self, x, y, hint=0, window=200):
-        """Closest point on the trail to (x, y), searched around index `hint`.
+        """
+        Closest point on the trail to (x, y), searched around index `hint`.
 
         Returns (s, lateral, index): arc length of that point, signed offset
         (positive = (x, y) is left of the trail), and the segment index, to
@@ -61,7 +64,7 @@ class Trail:
             return self.ss[0], 0.0, 0
         lo = max(0, hint - 20)
         hi = min(n - 1, hint + window)
-        best = (float("inf"), 0.0, 0.0, lo)
+        best = (float('inf'), 0.0, 0.0, lo)
         for i in range(lo, hi):
             ax, ay, bx, by = self.xs[i], self.ys[i], self.xs[i + 1], self.ys[i + 1]
             dx, dy = bx - ax, by - ay
@@ -77,9 +80,9 @@ class Trail:
         return best[1], best[2], best[3]
 
     def point_at(self, s):
-        """The trail point at arc length s, clamped to its ends."""
+        """Return the trail point at arc length s, clamped to its ends."""
         if not self.xs:
-            raise ValueError("empty trail")
+            raise ValueError('empty trail')
         if s <= self.ss[0]:
             return self.xs[0], self.ys[0]
         if s >= self.ss[-1]:

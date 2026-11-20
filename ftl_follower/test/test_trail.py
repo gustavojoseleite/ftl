@@ -1,8 +1,7 @@
 import math
 
-import pytest
-
 from ftl_follower.trail import Trail
+import pytest
 
 
 def straight(n=50, step=1.0):
