@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
 """
-Where this vehicle is, in the frame the whole convoy shares.
+Onde este veículo está, no referencial que o comboio inteiro compartilha.
 
     ros2 run ftl_follower pose_estimator --ros-args -r __ns:=/tractor_1
 
-Runs on every vehicle of the convoy, leader included, and publishes
-`ftl/state` (nav_msgs/Odometry, frame `ftl_map`): position east/north of the
-datum, heading, and speed. Followers read the state of the vehicle ahead from
-there, which on the real machines is what would travel over the radio.
+Roda em todos os veículos do comboio, líder incluído, e publica `ftl/state`
+(`nav_msgs/Odometry`, referencial `ftl_map`): posição leste/norte do `datum`,
+rumo e velocidade. Os seguidores leem daí o estado do veículo da frente, o que
+nas máquinas reais seria o que viaja pelo rádio.
 
-How. Heading comes from the IMU, which in these worlds reports orientation in
-the world's ENU frame, so it needs no alignment with anything. Position is
-dead-reckoned from the odometry's distance travelled along that heading, and
-pulled slowly towards the GNSS fix: odometry for smoothness between fixes, the
-fix for the absence of drift. It is the fusion road_follow uses, with the same
-four-second time constant at 5 Hz and fix_alpha 0.05. The fix is reported at
-the antenna, so the antenna's offset from base_footprint (from this vehicle's
-TF) is taken off before it is used.
+Como. O rumo vem da IMU, que nestes mundos informa a orientação no referencial
+ENU do mundo, então não precisa de alinhamento com nada. A posição é estimada
+por `dead reckoning` a partir da distância percorrida pela odometria nesse rumo,
+e puxada devagar para o fix GNSS: a odometria dá suavidade entre os fixes, e o
+fix dá a ausência de deriva. É a mesma fusão do `road_follow`, com a mesma
+constante de tempo de quatro segundos a 5 Hz e `fix_alpha` 0,05. O fix é
+informado na antena, então o deslocamento da antena em relação ao
+`base_footprint` (do TF deste veículo) é descontado antes de usá-lo.
 
-Odometry alone is not enough: each vehicle's odometry starts where that
-vehicle was spawned, and drifts metres per lap. GNSS alone is not enough
-either: a metre of noise at 5 Hz is a wheel that never stops twitching.
+Só a odometria não basta: a de cada veículo começa onde ele foi posicionado e
+deriva metros por volta. Só o GNSS também não basta: um metro de ruído a 5 Hz é
+um volante que nunca para de tremer.
 """
 
 import math
@@ -51,9 +51,9 @@ class PoseEstimator(Node):
         self.yaw = None
         self.speed = 0.0
         self.last_odom = None
-        self.antenna = None          # (forward, left) of the antenna from base, metres
+        self.antenna = None          # (frente, esquerda) da antena em relação à base, em metros
         self.seen = []
-        self.xy = None               # base position in the shared frame, once known
+        self.xy = None               # posição da base no referencial comum, depois de conhecida
 
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -71,7 +71,7 @@ class PoseEstimator(Node):
         try:
             tf = self.tf_buffer.lookup_transform(
                 self.base_frame, self.gnss_frame, rclpy.time.Time())
-        except Exception:                                  # noqa: BLE001 — not there yet
+        except Exception:                                  # noqa: BLE001 — ainda não existe
             return
         t = tf.transform.translation
         self.antenna = (t.x, t.y)
@@ -103,8 +103,8 @@ class PoseEstimator(Node):
             return
         meas = self._base_from_fix(msg)
         if self.xy is None:
-            # The convoy starts standing still: average the first fixes for a
-            # starting point with a fraction of one fix's noise.
+            # O comboio começa parado: a média dos primeiros fixes dá um ponto
+            # inicial com uma fração do ruído de um fix.
             self.seen.append(meas)
             if len(self.seen) >= self.fix_samples:
                 self.xy = (sum(m[0] for m in self.seen) / len(self.seen),

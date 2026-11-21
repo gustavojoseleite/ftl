@@ -1,16 +1,16 @@
-"""An FTL test scenario in Gazebo, without the FTL nodes.
+"""Um cenário de teste do FTL no Gazebo, sem os nós do FTL.
 
     ros2 launch ftl_gz sim.launch.py
     ros2 launch ftl_gz sim.launch.py world:=citrus_farm_60.sdf followers:=2 gui:=false
 
-Brings up the world and the convoy, and nothing else. Run the FTL nodes beside
-it with `ros2 launch ftl_bringup ftl.launch.py use_sim_time:=true`, which is
-what projects/ftl/compose.yaml does in its own container so they can be
-restarted without restarting Gazebo. ftl_sim.launch.py does both at once.
+Sobe o mundo e o comboio, e nada mais. Rode os nós do FTL ao lado, com
+`ros2 launch ftl_bringup ftl.launch.py use_sim_time:=true`, que é o que o
+projects/ftl/compose.yaml faz em um container próprio, para reiniciá-los sem
+reiniciar o Gazebo. O `ftl_sim.launch.py` faz os dois de uma vez.
 
-The scenario is the convoy of agri_gz_bringup (one leader, N followers in a
-line) with FTL's defaults: a pickup leading tractors down the main carreador
-of the citrus farm.
+O cenário é o comboio do agri_gz_bringup (um líder, N seguidores em fila) com os
+padrões do FTL: uma pickup puxando tratores pelo carreador principal da fazenda
+de citros.
 """
 
 from launch import LaunchDescription
@@ -19,7 +19,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
 
-# (argument, FTL default, description). Forwarded to the convoy as they are.
+# (argumento, padrão do FTL, descrição). Repassados ao comboio como estão.
 SCENARIO = (
     ("world", "citrus_farm.sdf", "World file, relative to agri_gz_worlds/worlds."),
     ("gui", "true", "false runs the simulator without its window."),

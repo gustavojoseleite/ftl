@@ -1,11 +1,11 @@
 """
-Latitude and longitude to metres, in a frame every vehicle shares.
+Latitude e longitude em metros, em um referencial que todos os veículos compartilham.
 
-Each vehicle's odometry starts wherever that vehicle was spawned, so two
-odometries cannot be compared. A GNSS fix can: turned into east/north metres
-from one agreed datum, every machine in the convoy lands in the same frame.
-The datum is a parameter all FTL nodes get from the same file (ftl.yaml); the
-default is the spherical_coordinates origin of the citrus-farm worlds.
+A odometria de cada veículo começa onde ele foi posicionado, então duas odometrias
+não se comparam. Um fix GNSS se compara: convertido em metros leste/norte a partir
+de um `datum` combinado, cada máquina do comboio cai no mesmo referencial. O
+`datum` é um parâmetro que todos os nós do FTL recebem do mesmo arquivo (`ftl.yaml`);
+o padrão é a origem de `spherical_coordinates` dos mundos da fazenda de citros.
 """
 
 import math
@@ -13,10 +13,10 @@ import math
 
 def metres_per_degree(lat_deg):
     """
-    (metres per degree of latitude, metres per degree of longitude) on WGS84.
+    Par (metros por grau de latitude, metros por grau de longitude) no WGS84.
 
-    The usual spherical shortcut is 0.4% out at this latitude, which over a
-    280 m carreador is a metre — the same series road_follow uses.
+    O atalho esférico usual erra 0,4% nesta latitude, o que em um carreador de
+    280 m dá um metro; é a mesma série que o `road_follow` usa.
     """
     phi = math.radians(lat_deg)
     per_lat = 111132.92 - 559.82 * math.cos(2 * phi) + 1.175 * math.cos(4 * phi)
@@ -25,7 +25,7 @@ def metres_per_degree(lat_deg):
 
 
 class LocalFrame:
-    """East/north metres from a datum. Flat-earth: fine over a few kilometres."""
+    """Metros leste/norte a partir de um `datum`. Terra plana: serve para alguns quilômetros."""
 
     def __init__(self, lat0, lon0):
         self.lat0, self.lon0 = lat0, lon0

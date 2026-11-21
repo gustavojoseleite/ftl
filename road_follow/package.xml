@@ -3,14 +3,18 @@
 <package format="3">
   <name>road_follow</name>
   <version>0.1.0</version>
-  <description>Drives a vehicle down the carreadores of the citrus farm by its camera: finds the road edges, steers by pure pursuit, and takes the route's junctions from odometry. Used by FTL to drive the leader.</description>
+  <description>
+    Dirige um veículo pelos carreadores da fazenda de citros pela câmera: acha as bordas da
+    estrada, guia por perseguição pura (`pure pursuit`) e tira da odometria os entroncamentos
+    da rota. Usado pelo FTL para dirigir o líder.
+  </description>
   <maintainer email="gujoseleite@gmail.com">Gustavo</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <!-- Only topics: camera_front/*, odom, gnss/fix in, cmd_vel out, plus the
-       vehicle's own TF for the camera height. No simulator dependency. -->
+  <!-- Só tópicos: camera_front/*, odom e gnss/fix na entrada, cmd_vel na saída, mais o
+       TF do próprio veículo para a altura da câmera. Sem dependência do simulador. -->
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
   <exec_depend>python3-numpy</exec_depend>

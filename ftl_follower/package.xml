@@ -3,13 +3,17 @@
 <package format="3">
   <name>ftl_follower</name>
   <version>0.1.0</version>
-  <description>Follow the leader: a pose estimator for every vehicle (GNSS + IMU + odometry in one shared local frame) and a follower that drives along the path of the vehicle ahead at a set gap. Knows no simulator.</description>
+  <description>
+    `Follow the leader`: um estimador de pose para cada veículo (GNSS + IMU + odometria em um
+    único referencial local comum) e um seguidor que dirige pelo caminho do veículo da frente
+    a um espaçamento fixo. Não conhece nenhum simulador.
+  </description>
   <maintainer email="gujoseleite@gmail.com">Gustavo</maintainer>
   <license>Apache-2.0</license>
 
-  <!-- Only topics in the vehicle's namespace (odom, imu/data, gnss/fix in,
-       cmd_vel out), the vehicle's TF for the antenna offset, and the ftl/state
-       of the vehicle ahead. -->
+  <!-- Só tópicos no namespace do veículo (odom, imu/data, gnss/fix na entrada,
+       cmd_vel na saída), o TF do veículo para o deslocamento da antena e o ftl/state
+       do veículo da frente. -->
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
   <exec_depend>rclpy</exec_depend>

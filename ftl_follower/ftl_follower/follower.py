@@ -1,26 +1,27 @@
 #!/usr/bin/env python3
 """
-Drive along the path of the vehicle ahead, a set distance behind it.
+Segue o caminho do veículo da frente, a uma distância fixa atrás dele.
 
     ros2 run ftl_follower follower --ros-args -r __ns:=/tractor_1 -p ahead:=/pickup
 
-Reads this vehicle's `ftl/state` and the `ftl/state` of the vehicle ahead
-(both from pose_estimator, in the shared ftl_map frame) and publishes
-`cmd_vel`. In a convoy every follower follows the one in front of it, so a
-disturbance passes down the line rather than every machine chasing the leader
-across the field.
+Lê o `ftl/state` deste veículo e o `ftl/state` do veículo da frente (ambos do
+`pose_estimator`, no referencial compartilhado `ftl_map`) e publica `cmd_vel`.
+Em um comboio cada seguidor segue o que vai à sua frente, então uma perturbação
+se propaga pela fila, em vez de cada máquina perseguir o líder pelo campo.
 
-Path, not position. The vehicle ahead's positions are kept as a trail, and the
-follower steers by pure pursuit on a point of that trail one lookahead ahead
-of itself. Aiming at the vehicle itself would cut every corner of a carreador.
+Caminho, não posição. As posições do veículo da frente são guardadas como uma
+trilha, e o seguidor esterça por `pure pursuit` em um ponto dessa trilha, uma
+distância de visada à sua frente. Mirar no próprio veículo cortaria todas as
+curvas de um carreador.
 
-Gap, along the path. How far behind is the arc length of the trail between
-the two machines, so a bend does not make the follower think it is too close.
-Speed is the vehicle ahead's speed plus a pull on the gap error, ramped, and
-zero below min_gap or when either state goes stale.
+Espaçamento, ao longo do caminho. A distância até o veículo da frente é o
+comprimento de arco da trilha entre as duas máquinas, então uma curva não faz
+o seguidor achar que está perto demais. A velocidade é a do veículo da frente
+mais uma correção sobre o erro do espaçamento, em rampa, e vai a zero abaixo de
+`min_gap` ou quando um dos estados fica obsoleto.
 
-Published besides cmd_vel, for experiments: ftl/gap (metres along the path)
-and ftl/cross_track (metres off the path, positive = left of it).
+Publicados além de `cmd_vel`, para experimentos: `ftl/gap` (metros ao longo do
+caminho) e `ftl/cross_track` (metros fora do caminho, positivo = à esquerda).
 """
 
 from ftl_follower.control import (clamp_curvature, gap_speed, lookahead,

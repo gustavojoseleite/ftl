@@ -1,32 +1,32 @@
-# Parameters of the FTL nodes. One file per experiment is the intended use:
-# copy this one, change what the experiment changes, and pass it with
-#   ros2 launch ftl_bringup ftl.launch.py params_file:=<path>
+# Parâmetros dos nós do FTL. O uso previsto é um arquivo por experimento:
+# copie este, mude o que o experimento muda e passe-o com
+#   ros2 launch ftl_bringup ftl.launch.py params_file:=<caminho>
 #
-# "/**/<node>" matches that node in whatever vehicle namespace it runs in.
+# "/**/<nó>" casa com esse nó em qualquer namespace de veículo em que ele rode.
 
-/**/road_follow:                # drives the leader
+/**/road_follow:                # dirige o líder
   ros__parameters:
-    route: lap                  # lap | origin_bend | follow  (see road_follow.py)
-    laps: 0                     # 0 = until stopped
-    speed: 3.0                  # m/s on straights
+    route: lap                  # lap | origin_bend | follow  (ver road_follow.py)
+    laps: 0                     # 0 = até ser parado
+    speed: 3.0                  # m/s nas retas
 
-/**/pose_estimator:             # every vehicle
+/**/pose_estimator:             # todos os veículos
   ros__parameters:
-    # The datum of the shared frame. Every vehicle must use the same one; this
-    # is the spherical_coordinates origin of the citrus-farm worlds.
+    # O `datum` do referencial compartilhado. Todos os veículos devem usar o mesmo;
+    # este é a origem de `spherical_coordinates` dos mundos da fazenda de citros.
     datum_lat: -20.9494
     datum_lon: -48.4794
-    fix_samples: 25             # fixes averaged, standing still, for the start
-    fix_alpha: 0.05             # pull towards each fix: 4 s time constant at 5 Hz
+    fix_samples: 25             # fixes na média, parado, para o ponto inicial
+    fix_alpha: 0.05             # puxada para cada fix: constante de tempo de 4 s a 5 Hz
 
-/**/follower:                   # each follower
+/**/follower:                   # cada seguidor
   ros__parameters:
-    gap: 10.0                   # m along the path, base to base (= the convoy's spacing)
-    min_gap: 5.0                # m: stop below this, whatever the vehicle ahead does
-    k_gap: 0.4                  # (m/s) per metre of gap error
-    v_max: 4.0                  # m/s; the tractor's plugin tops out at 4.2
-    accel: 1.0                  # m/s^2 ramp on the commanded speed
-    lookahead_min: 4.0          # m, pure pursuit at standstill
-    lookahead_gain: 1.0         # s: + this times the speed
+    gap: 10.0                   # m ao longo do caminho, de base a base (= o espaçamento do comboio)
+    min_gap: 5.0                # m: para abaixo disto, não importa o que o veículo da frente faça
+    k_gap: 0.4                  # (m/s) por metro de erro do espaçamento
+    v_max: 4.0                  # m/s; o plugin do trator chega no máximo a 4,2
+    accel: 1.0                  # m/s^2 de rampa na velocidade comandada
+    lookahead_min: 4.0          # m, `pure pursuit` parado
+    lookahead_gain: 1.0         # s: + isto vezes a velocidade
     lookahead_max: 10.0         # m
-    min_radius: 3.2             # m: the tractor's turning circle at full lock
+    min_radius: 3.2             # m: o círculo de giro do trator com a direção toda esterçada
