@@ -10,7 +10,7 @@ install(
 
 if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
-  foreach(name test_decisions test_contributing test_readme)
+  foreach(name test_decisions test_contributing test_readme test_ci_workflow test_ci_docs)
     ament_add_pytest_test(${name} test/${name}.py)
   endforeach()
 endif()

@@ -96,6 +96,12 @@ O `-k` filtra pelo nome os testes pytest dos pacotes Python, sem curinga. O `-R`
 nome os testes registrados no CMake (gtest e `ament_add_pytest_test`), nos pacotes `ament_cmake`.
 O comando termina com `RESUMO testes=… falhas=…`.
 
+O teste de simulação, que precisa do Gazebo, tem uma marca para o CI deixá-lo de fora. Num pacote
+Python, ele leva `@pytest.mark.simulation`, com a marca registrada no `setup.cfg` do pacote, em
+`[tool:pytest]`, na linha `markers =`. Num pacote CMake, ele leva
+`set_tests_properties(<teste> PROPERTIES LABELS simulation)`. O CI não roda esses testes, e o
+`test.sh` roda todos.
+
 ## Lint
 
 O lint é o do ament: flake8, com linhas de até 99 caracteres, aspas simples, imports em ordem
