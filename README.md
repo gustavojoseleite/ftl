@@ -85,6 +85,19 @@ O cenário padrão: uma pickup liderando dois tratores autônomos pelo carreador
 segue a máquina à sua frente. Argumentos do cenário: `world`, `leader`, `follower`, `followers`,
 `spacing`, `yaw`, `gui`.
 
+## CI
+
+O workflow `.github/workflows/ci.yml` roda a cada push no `main`, em todo pull request e sob
+demanda (`workflow_dispatch`). Num container `ros:jazzy-ros-base` ele baixa os repositórios da
+plataforma, instala as dependências com o rosdep, compila os pacotes do ftl, roda os testes e
+mostra o resultado de cada arquivo de teste. Os testes de simulação, com a marca `simulation`,
+ficam de fora: o CI não tem simulador nem GPU.
+
+Os repositórios `robot_description`, `agri_gazebo` e `vehicle_control` são privados, então o
+workflow precisa de um token: um *fine-grained personal access token* com leitura de Contents
+desses três repositórios, salvo neste repositório como o secret `WORKSPACE_REPOS_TOKEN` (Settings
+→ Secrets and variables → Actions), o mesmo do `vehicle_control`.
+
 ## Como um seguidor segue
 
 ```

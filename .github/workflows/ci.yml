@@ -1,0 +1,62 @@
+# Compila os pacotes do ftl com os repositórios da plataforma (robot_description,
+# agri_gazebo e vehicle_control) e roda os testes deles, menos os de simulação.
+# Sem simulador e sem GPU.
+#
+# Os repositórios da plataforma são privados, então o checkout deles precisa de
+# um token: um personal access token fine-grained com leitura de Contents nos
+# repositórios gustavojoseleite/robot_description, agri_gazebo e vehicle_control,
+# guardado neste repositório como o segredo WORKSPACE_REPOS_TOKEN
+# (Settings → Secrets and variables → Actions).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    container: ros:jazzy-ros-base
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: src/ftl
+      - uses: actions/checkout@v4
+        with:
+          repository: gustavojoseleite/robot_description
+          path: src/robot_description
+          token: ${{ secrets.WORKSPACE_REPOS_TOKEN }}
+      - uses: actions/checkout@v4
+        with:
+          repository: gustavojoseleite/agri_gazebo
+          path: src/agri_gazebo
+          token: ${{ secrets.WORKSPACE_REPOS_TOKEN }}
+      - uses: actions/checkout@v4
+        with:
+          repository: gustavojoseleite/vehicle_control
+          path: src/vehicle_control
+          token: ${{ secrets.WORKSPACE_REPOS_TOKEN }}
+      - name: Dependências
+        run: |
+          apt-get update
+          rosdep update --rosdistro jazzy
+          rosdep install --from-paths src --ignore-src -y --rosdistro jazzy
+      - name: Compilar
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          colcon build --packages-up-to $(colcon list --base-paths src/ftl --names-only)
+      - name: Testar
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          colcon test --packages-select $(colcon list --base-paths src/ftl --names-only) \
+            --return-code-on-test-failure \
+            --ctest-args -LE simulation \
+            --pytest-args -m "not simulation"
+      - name: Resultado
+        if: always()
+        run: colcon test-result --all --verbose
