@@ -1,4 +1,4 @@
-# colcon output, in case someone builds from inside the repo
+# saída do colcon, caso alguém compile de dentro do repositório
 build/
 install/
 log/
@@ -6,7 +6,7 @@ log/
 __pycache__/
 *.py[cod]
 
-# Gazebo runtime leftovers
+# restos da execução do Gazebo
 .gz/
 *.log
 

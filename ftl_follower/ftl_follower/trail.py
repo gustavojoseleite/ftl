@@ -1,11 +1,11 @@
 """
-The path the vehicle ahead has driven, as a polyline with arc length.
+O caminho que o veículo da frente percorreu, como uma polilinha com comprimento de arco.
 
-A follower does not aim at the vehicle ahead: it drives where that vehicle
-drove. Aiming straight at it cuts every corner, and on a carreador that leaves
-the road; replaying its path keeps to the road the leader kept to. The gap is
-measured along the same path, so it stays right through a bend, where the
-straight-line distance would shrink.
+Um seguidor não mira no veículo da frente: ele passa por onde aquele veículo passou.
+Mirar direto nele corta todas as curvas, e em um carreador isso sai da estrada;
+repetir o caminho mantém a estrada que o líder manteve. O espaçamento é medido
+ao longo do mesmo caminho, então continua certo em uma curva, onde a distância em
+linha reta diminuiria.
 """
 
 import math
@@ -24,7 +24,7 @@ class Trail:
         return self.ss[-1] if self.ss else 0.0
 
     def append(self, x, y):
-        """Add a point if it is at least `spacing` from the last one."""
+        """Acrescenta um ponto se ele estiver ao menos a `spacing` do último."""
         if not self.xs:
             self.xs, self.ys, self.ss = [x], [y], [0.0]
             return
@@ -36,11 +36,11 @@ class Trail:
 
     def seed_line(self, a, b):
         """
-        Start the trail as the straight line from a to b.
+        Inicia a trilha como a reta de a até b.
 
-        At the start the vehicle ahead has driven nothing yet. The convoy is
-        spawned in a line on the road, so the straight line from the follower
-        to it is the road, and it gives the follower a path to stand on.
+        No começo o veículo da frente ainda não percorreu nada. O comboio é
+        posicionado em fila na estrada, então a reta do seguidor até ele é a
+        estrada, e dá ao seguidor um caminho onde se apoiar.
         """
         n = max(1, int(math.hypot(b[0] - a[0], b[1] - a[1]) / self.spacing))
         for i in range(n + 1):
@@ -49,13 +49,13 @@ class Trail:
 
     def project(self, x, y, hint=0, window=200):
         """
-        Closest point on the trail to (x, y), searched around index `hint`.
+        Ponto da trilha mais próximo de (x, y), buscado em torno do índice `hint`.
 
-        Returns (s, lateral, index): arc length of that point, signed offset
-        (positive = (x, y) is left of the trail), and the segment index, to
-        pass back as the next hint. The search is local because a trail can
-        cross itself (a lap) and the global nearest point would be the wrong
-        pass.
+        Devolve (s, lateral, índice): o comprimento de arco desse ponto, o desvio
+        com sinal (positivo = (x, y) está à esquerda da trilha) e o índice do
+        segmento, para passar de volta como o próximo `hint`. A busca é local
+        porque uma trilha pode se cruzar (uma volta) e o ponto mais próximo
+        global seria a passada errada.
         """
         n = len(self.xs)
         if n == 0:
@@ -80,7 +80,7 @@ class Trail:
         return best[1], best[2], best[3]
 
     def point_at(self, s):
-        """Return the trail point at arc length s, clamped to its ends."""
+        """Devolve o ponto da trilha no comprimento de arco s, limitado às pontas."""
         if not self.xs:
             raise ValueError('empty trail')
         if s <= self.ss[0]:
@@ -99,7 +99,7 @@ class Trail:
                 self.ys[lo] + (self.ys[hi] - self.ys[lo]) * t)
 
     def prune(self, s_before):
-        """Forget the trail behind s_before (keeping two points). Returns how many went."""
+        """Esquece a trilha atrás de s_before (guarda dois pontos) e devolve quantos saíram."""
         k = 0
         while k < len(self.ss) - 2 and self.ss[k + 1] < s_before:
             k += 1

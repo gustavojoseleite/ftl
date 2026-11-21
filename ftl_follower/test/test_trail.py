@@ -23,18 +23,18 @@ def test_project_gives_arc_length_and_signed_offset():
     t = straight()
     s, lateral, _ = t.project(10.5, 2.0)
     assert s == pytest.approx(10.5)
-    assert lateral == pytest.approx(2.0)          # left of a trail heading +x
+    assert lateral == pytest.approx(2.0)          # à esquerda de um rastro rumo a +x
     _, lateral, _ = t.project(10.5, -1.0)
     assert lateral == pytest.approx(-1.0)
 
 
 def test_gap_is_measured_along_a_bend_not_straight_across():
-    # A 90 degree corner: 10 m east, then 10 m north.
+    # Uma esquina de 90 graus: 10 m para leste, depois 10 m para o norte.
     t = Trail(spacing=0.3)
     t.seed_line((0.0, 0.0), (10.0, 0.0))
     t.seed_line((10.0, 0.0), (10.0, 10.0))
     s, _, _ = t.project(0.0, 0.0)
-    assert t.end_s - s == pytest.approx(20.0, abs=0.35)   # 14.1 in a straight line
+    assert t.end_s - s == pytest.approx(20.0, abs=0.35)   # 14,1 em linha reta
 
 
 def test_point_at_interpolates_and_clamps():
@@ -45,7 +45,7 @@ def test_point_at_interpolates_and_clamps():
 
 
 def test_project_follows_the_hint_on_a_trail_that_crosses_itself():
-    # Out along y=0 and back along y=0.2: two passes over the same ground.
+    # Ida por y=0 e volta por y=0,2: duas passagens sobre o mesmo chão.
     t = Trail(spacing=0.3)
     t.seed_line((0.0, 0.0), (20.0, 0.0))
     t.seed_line((20.0, 0.0), (20.0, 0.2))

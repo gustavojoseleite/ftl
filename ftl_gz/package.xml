@@ -3,13 +3,16 @@
 <package format="3">
   <name>ftl_gz</name>
   <version>0.1.0</version>
-  <description>FTL test scenarios in Gazebo Harmonic: which world, which vehicles lead and follow, where they start. Brings up the simulation and, optionally, the FTL nodes from ftl_bringup.</description>
+  <description>
+    Cenários de teste do FTL no Gazebo Harmonic: qual mundo, quais veículos lideram e seguem,
+    onde começam. Sobe a simulação e, se quiser, os nós do FTL do ftl_bringup.
+  </description>
   <maintainer email="gujoseleite@gmail.com">Gustavo</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <!-- The only FTL package that knows a simulator exists. -->
+  <!-- O único pacote do FTL que sabe que existe um simulador. -->
   <exec_depend>agri_gz_bringup</exec_depend>
   <exec_depend>agri_gz_worlds</exec_depend>
   <exec_depend>autonomous_tractor_gz</exec_depend>

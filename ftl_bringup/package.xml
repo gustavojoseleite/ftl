@@ -3,14 +3,17 @@
 <package format="3">
   <name>ftl_bringup</name>
   <version>0.1.0</version>
-  <description>FTL nodes and their parameters, as one launch. Runs the same against the simulator or the real machines: nothing here depends on Gazebo.</description>
+  <description>
+    Os nós do FTL e seus parâmetros, em um só launch. Roda igual contra o simulador ou as
+    máquinas reais: nada aqui depende do Gazebo.
+  </description>
   <maintainer email="gujoseleite@gmail.com">Gustavo</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <!-- No simulator dependency, on purpose: the scenarios that need Gazebo live
-       in ftl_gz, which depends on this package and never the reverse. -->
+  <!-- Sem dependência de simulador, de propósito: os cenários que precisam do Gazebo
+       ficam no ftl_gz, que depende deste pacote e nunca o contrário. -->
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>ftl_follower</exec_depend>

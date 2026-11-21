@@ -1,26 +1,26 @@
-"""The FTL nodes, simulator or not.
+"""Os nós do FTL, com simulador ou sem.
 
-    ros2 launch ftl_bringup ftl.launch.py                       # real machines
-    ros2 launch ftl_bringup ftl.launch.py use_sim_time:=true    # against Gazebo
+    ros2 launch ftl_bringup ftl.launch.py                       # máquinas reais
+    ros2 launch ftl_bringup ftl.launch.py use_sim_time:=true    # contra o Gazebo
     ros2 launch ftl_bringup ftl.launch.py followers:=4 params_file:=/path/exp.yaml
 
-What runs:
+O que roda:
 
-    every vehicle      pose_estimator   GNSS + IMU + odometry -> ftl/state, shared frame
-    the leader         road_follow      drives the carreadores by its camera
-    each follower      follower         drives the path of the vehicle ahead at `gap`
+    todo veículo       pose_estimator   GNSS + IMU + odometria -> ftl/state, referencial comum
+    o líder            road_follow      dirige pelos carreadores usando a câmera
+    cada seguidor      follower         segue o caminho do veículo da frente a `gap`
 
-The line is leader, <prefix>_1, <prefix>_2, ... and each follower follows the
-one in front of it: tractor_1 follows the pickup, tractor_2 follows tractor_1.
-These names are the vehicles' namespaces, the same ones the convoy spawns.
+A fila é líder, <prefixo>_1, <prefixo>_2, ... e cada seguidor segue o que vai à
+sua frente: tractor_1 segue a pickup, tractor_2 segue tractor_1. Esses nomes são
+os namespaces dos veículos, os mesmos que o comboio cria.
 
-Nothing here spawns a vehicle or knows a simulator exists. Every node talks to
-a vehicle only through the topics in its namespace (cmd_vel, odom, imu/data,
-gnss/fix, camera_front/*) and its TF, so the same launch drives a convoy in
-Gazebo (ftl_gz brings that up) or on the farm. use_sim_time is the only switch.
+Nada aqui cria um veículo nem sabe que existe um simulador. Cada nó fala com um
+veículo só pelos tópicos do namespace dele (cmd_vel, odom, imu/data, gnss/fix,
+camera_front/*) e pelo seu TF, então o mesmo launch conduz um comboio no Gazebo
+(o ftl_gz o sobe) ou na fazenda. `use_sim_time` é o único interruptor.
 
-TF: each vehicle keeps its tree in its own namespace (see agri_gz_bringup's
-vehicles module), so a node reading TF takes the same two remaps.
+TF: cada veículo mantém sua árvore no próprio namespace (ver o módulo vehicles do
+agri_gz_bringup), então um nó que lê TF recebe os mesmos dois remaps.
 """
 
 from launch import LaunchDescription

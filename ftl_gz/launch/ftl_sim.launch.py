@@ -1,11 +1,11 @@
-"""An FTL test in Gazebo, in one command: the scenario and the FTL nodes.
+"""Um teste do FTL no Gazebo, em um comando: o cenário e os nós do FTL.
 
     ros2 launch ftl_gz ftl_sim.launch.py
     ros2 launch ftl_gz ftl_sim.launch.py followers:=4 params_file:=/path/exp.yaml
 
-sim.launch.py (world + convoy) and ftl_bringup's ftl.launch.py with
-use_sim_time on. The simplest way to repeat an experiment; while developing,
-running the two apart lets the FTL nodes restart without Gazebo.
+O `sim.launch.py` (mundo + comboio) e o `ftl.launch.py` do ftl_bringup com
+`use_sim_time` ligado. É o jeito mais simples de repetir um experimento; no
+desenvolvimento, rodar os dois separados deixa reiniciar os nós do FTL sem o Gazebo.
 """
 
 from launch import LaunchDescription
@@ -22,8 +22,8 @@ def generate_launch_description():
     ftl = PathJoinSubstitution([FindPackageShare("ftl_bringup"), "launch", "ftl.launch.py"])
 
     return LaunchDescription([
-        # Declared without defaults here: sim.launch.py owns the scenario
-        # defaults, and only what is given on the command line is forwarded.
+        # Declarados sem padrão aqui: o `sim.launch.py` é dono dos padrões do
+        # cenário, e só o que vem na linha de comando é repassado.
         DeclareLaunchArgument(
             "params_file",
             default_value=PathJoinSubstitution([FindPackageShare("ftl_bringup"), "config", "ftl.yaml"]),
@@ -32,8 +32,8 @@ def generate_launch_description():
 
         IncludeLaunchDescription(PythonLaunchDescriptionSource(sim)),
 
-        # The convoy names the leader after its vehicle type unless told
-        # otherwise, so the leader's namespace is leader:= itself.
+        # O comboio dá ao líder o nome do tipo de veículo, a menos que se diga
+        # outro, então o namespace do líder é o próprio `leader:=`.
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(ftl),
             launch_arguments={

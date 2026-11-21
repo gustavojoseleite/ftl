@@ -6,7 +6,7 @@
 # um token: um personal access token fine-grained com leitura de Contents nos
 # repositórios gustavojoseleite/robot_description, agri_gazebo e vehicle_control,
 # guardado neste repositório como o segredo WORKSPACE_REPOS_TOKEN
-# (Settings → Secrets and variables → Actions).
+# (`Settings → Secrets and variables → Actions`).
 name: CI
 
 on:

@@ -16,9 +16,9 @@ def test_gap_speed_closes_and_eases():
 
 
 def test_gap_speed_limits():
-    assert gap_speed(3.0, 40.0, 10.0, 0.4, 4.0, 5.0) == 4.0     # never above v_max
-    assert gap_speed(0.0, 7.0, 10.0, 0.4, 4.0, 5.0) == 0.0      # never backwards
-    assert gap_speed(3.0, 4.9, 10.0, 0.4, 4.0, 5.0) == 0.0      # too close: stop
+    assert gap_speed(3.0, 40.0, 10.0, 0.4, 4.0, 5.0) == 4.0     # nunca acima de `v_max`
+    assert gap_speed(0.0, 7.0, 10.0, 0.4, 4.0, 5.0) == 0.0      # nunca para trás
+    assert gap_speed(3.0, 4.9, 10.0, 0.4, 4.0, 5.0) == 0.0      # perto demais: para
 
 
 def test_pure_pursuit_straight_ahead_is_zero():
@@ -26,10 +26,10 @@ def test_pure_pursuit_straight_ahead_is_zero():
 
 
 def test_pure_pursuit_sign_and_value():
-    # Target 5 m ahead, 1 m to the left: k = 2y/L^2 = 2/26.
+    # Alvo 5 m à frente e 1 m à esquerda: k = 2y/L^2 = 2/26.
     assert pure_pursuit_curvature(0, 0, 0, 5, 1) == pytest.approx(2 / 26)
     assert pure_pursuit_curvature(0, 0, 0, 5, -1) == pytest.approx(-2 / 26)
-    # Same geometry with the vehicle heading north.
+    # A mesma geometria, com o veículo rumo ao norte.
     assert pure_pursuit_curvature(0, 0, math.pi / 2, -1, 5) == pytest.approx(2 / 26)
 
 
@@ -50,8 +50,8 @@ def test_lookahead_and_ramp():
 def test_local_frame_metres():
     f = LocalFrame(-20.9494, -48.4794)
     e, n = f.to_enu(-20.9494 + 0.001, -48.4794 + 0.001)
-    assert n == pytest.approx(110.7, abs=0.5)     # a millidegree of latitude
-    assert e == pytest.approx(104.0, abs=0.5)     # shorter: cos(21 degrees)
+    assert n == pytest.approx(110.7, abs=0.5)     # um milésimo de grau de latitude
+    assert e == pytest.approx(104.0, abs=0.5)     # mais curto: cos(21 graus)
 
 
 def test_yaw_and_wrap():
