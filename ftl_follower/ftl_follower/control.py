@@ -3,17 +3,27 @@
 import math
 
 
-def gap_speed(v_ahead, gap, desired, k_gap, v_max, min_gap):
+def gap_speed(v_ahead, gap, desired, k_gap, v_max, min_gap, deadband=0.0):
     """
     Velocidade que mantém `desired` metros atrás do veículo da frente.
 
     É a velocidade do próprio veículo da frente, mais uma correção proporcional ao erro
     do espaçamento: longe demais, ele se aproxima; perto demais, alivia. Abaixo de
     `min_gap` ele para de vez, não importa o que o veículo da frente faça.
+
+    Zona morta: com |gap - desired| <= `deadband`, a correção é zero e ele só copia a
+    velocidade da frente. Fora da zona, a correção é `k_gap` vezes o que passa dela
+    (erro - `deadband`, com o sinal do erro), então não há degrau na borda. É a
+    incerteza da posição: um erro menor que ela não é um erro que se possa corrigir.
     """
     if gap < min_gap:
         return 0.0
-    return max(0.0, min(v_max, v_ahead + k_gap * (gap - desired)))
+    error = gap - desired
+    if abs(error) <= deadband:
+        error = 0.0
+    else:
+        error -= math.copysign(deadband, error)
+    return max(0.0, min(v_max, v_ahead + k_gap * error))
 
 
 def lookahead(v, ld_min, ld_gain, ld_max):
