@@ -25,9 +25,9 @@ EXPECTED = {
     'ftl_follower/__init__.py':
         '3bebd437c9cea372cc2b1f73b1dcc9cf01dc18b48defb40cbf2fb38326f68759',
     'ftl_follower/control.py':
-        'c0d59b6f587367521f6d5f5f3f0525d869662dd1a0c7e569a331edb4ccc67fff',
+        '30480bacc8e875846ea0cbd491222160ee5c22b31733634fa155af4d6c80c127',
     'ftl_follower/follower.py':
-        '363a821f1ce50593276e271dc2cc83db9b7963be09353c590dad1027df27a19b',
+        '9920c4723c548d91a81752044ad562af9166dba20fea1a000d4db4f69fe541dd',
     'ftl_follower/geo.py':
         '9c7cd6bddc913646111bad8ec98ece03cb5339cf00c51ff0c0aad636789e0dc5',
     'ftl_follower/pose_estimator.py':

@@ -123,6 +123,10 @@ da frente mais 0,4 (m/s)/m de erro de distância, em rampa de 1 m/s², limitada 
 abaixo de `min_gap` (5 m) ou quando qualquer um dos `ftl/state` tem mais de um segundo. Cada
 seguidor segue o da frente, então o `tractor_2` segue o `tractor_1`, e não a pickup.
 
+**Zona morta.** O parâmetro `uncertainty` (1 m no perfil `default`) é a incerteza da posição
+estimada: erros de distância menores que ela não geram correção, e o espaçamento do rastro nunca
+fica abaixo dela. Com o veículo da frente parado, o vaivém da estimativa não infla mais o arco.
+
 Todo número acima é um parâmetro no `ftl_bringup/config/ftl.yaml`. Para experimentos, cada seguidor
 também publica `ftl/gap` (metros ao longo do caminho) e `ftl/cross_track` (metros fora dele,
 esquerda positiva).

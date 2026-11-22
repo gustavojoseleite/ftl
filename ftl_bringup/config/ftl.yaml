@@ -30,3 +30,5 @@
     lookahead_gain: 1.0         # s: + isto vezes a velocidade
     lookahead_max: 10.0         # m
     min_radius: 3.2             # m: o círculo de giro do trator com a direção toda esterçada
+    uncertainty: 1.0            # m: incerteza da posição estimada (perfil `default`);
+                                # a covariância do estado a substituirá

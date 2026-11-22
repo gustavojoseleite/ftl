@@ -20,6 +20,12 @@ o seguidor achar que está perto demais. A velocidade é a do veículo da frente
 mais uma correção sobre o erro do espaçamento, em rampa, e vai a zero abaixo de
 `min_gap` ou quando um dos estados fica obsoleto.
 
+Zona morta. O parâmetro `uncertainty` (m, padrão 0) é a incerteza da posição estimada.
+Erros de espaçamento menores que ela não geram correção (`deadband` do `gap_speed`), e a
+trilha nunca é mais fina que ela: o espaçamento dos pontos é o maior entre `trail_spacing` e
+`uncertainty`. Sem isso, com o veículo da frente parado, o vaivém da estimativa inflava o
+arco da trilha, e o seguidor lia esse ruído como distância e se movia à toa.
+
 Publicados além de `cmd_vel`, para experimentos: `ftl/gap` (metros ao longo do
 caminho) e `ftl/cross_track` (metros fora do caminho, positivo = à esquerda).
 """
@@ -62,10 +68,11 @@ class Follower(Node):
         self.ld_max = param('lookahead_max', 10.0)
         self.min_radius = param('min_radius', 3.2)
         self.stale_after = param('stale_after', 1.0)
+        self.uncertainty = param('uncertainty', 0.0)
         rate = param('rate', 20.0)
         self.dt = 1.0 / rate
 
-        self.trail = Trail(param('trail_spacing', 0.3))
+        self.trail = Trail(max(param('trail_spacing', 0.3), self.uncertainty))
         self.hint = 0
         self.me = self.ahead = None
         self.me_t = self.ahead_t = None
@@ -110,7 +117,8 @@ class Follower(Node):
         s, xte, self.hint = self.trail.project(x, y, self.hint)
         gap = self.trail.end_s - s
 
-        v_target = gap_speed(v_ahead, gap, self.gap_desired, self.k_gap, self.v_max, self.min_gap)
+        v_target = gap_speed(v_ahead, gap, self.gap_desired, self.k_gap, self.v_max,
+                             self.min_gap, self.uncertainty)
         self.v = 0.0 if v_target == 0.0 else ramp(self.v, v_target, self.accel, self.dt)
 
         ld = lookahead(self.v, self.ld_min, self.ld_gain, self.ld_max)
