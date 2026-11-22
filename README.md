@@ -83,7 +83,9 @@ ros2 launch ftl_bringup ftl.launch.py params_file:=/workspace/exp_01.yaml
 O cenário padrão: uma pickup liderando dois tratores autônomos pelo carreador principal do
 `citrus_farm.sdf`, a dez metros um do outro; o `road_follow` leva a pickup pela volta e cada trator
 segue a máquina à sua frente. Argumentos do cenário: `world`, `leader`, `follower`, `followers`,
-`spacing`, `yaw`, `gui`.
+`spacing`, `yaw`, `gui` e `sensor_profile`. O `sensor_profile` padrão é o `nominal` (GNSS RTK a
+1 Hz, com 2 cm de dispersão; IMU a 20 Hz sem ruído, D13); `default` dá ao GNSS 1 m de ruído, e
+`ideal` tira o ruído de tudo.
 
 ## CI
 

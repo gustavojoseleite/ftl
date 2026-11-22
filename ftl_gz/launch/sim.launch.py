@@ -28,6 +28,9 @@ SCENARIO = (
     ("followers", "2", "How many followers."),
     ("spacing", "10.0", "Metres between one machine's base_link and the next."),
     ("yaw", "0.0", "Heading of the line, radians. 0 is along the origin carreador."),
+    # O perfil dos sensores de navegação. O FTL usa o `nominal` (GNSS RTK a 1 Hz, IMU a 20 Hz,
+    # D13), e não o `default` do comboio, cujo GNSS tem 1 m de ruído.
+    ("sensor_profile", "nominal", "GNSS and IMU profile: nominal, default or ideal."),
 )
 
 
