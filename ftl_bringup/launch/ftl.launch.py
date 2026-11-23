@@ -45,11 +45,13 @@ def launch_setup(context, *args, **kwargs):
              namespace=leader, parameters=common, remappings=TF_REMAPS, output="screen"),
     ]
     for ns in [leader, *followers]:
-        nodes.append(Node(package="ftl_follower", executable="pose_estimator", name="pose_estimator",
-                          namespace=ns, parameters=common, remappings=TF_REMAPS, output="screen"))
+        nodes.append(Node(package="ftl_follower_pure_pursuit", executable="pose_estimator",
+                          name="pose_estimator", namespace=ns, parameters=common,
+                          remappings=TF_REMAPS, output="screen"))
     for ahead, ns in zip([leader, *followers], followers):
-        nodes.append(Node(package="ftl_follower", executable="follower", name="follower",
-                          namespace=ns, parameters=[*common, {"ahead": f"/{ahead}"}], output="screen"))
+        nodes.append(Node(package="ftl_follower_pure_pursuit", executable="follower",
+                          name="follower", namespace=ns,
+                          parameters=[*common, {"ahead": f"/{ahead}"}], output="screen"))
     return nodes
 
 

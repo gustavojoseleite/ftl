@@ -1,8 +1,8 @@
 import math
 
-from ftl_follower.control import (clamp_curvature, gap_speed, lookahead,
-                                  pure_pursuit_curvature, ramp)
-from ftl_follower.geo import LocalFrame, wrap, yaw_from_quaternion
+from ftl_follower_pure_pursuit.control import (clamp_curvature, gap_speed, lookahead,
+                                               pure_pursuit_curvature, ramp)
+from ftl_follower_pure_pursuit.geo import LocalFrame, wrap, yaw_from_quaternion
 import pytest
 
 

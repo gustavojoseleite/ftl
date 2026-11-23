@@ -8,8 +8,8 @@ parado.
 """
 import random
 
-from ftl_follower.control import gap_speed
-from ftl_follower.trail import Trail
+from ftl_follower_pure_pursuit.control import gap_speed
+from ftl_follower_pure_pursuit.trail import Trail
 import pytest
 
 

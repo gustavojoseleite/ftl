@@ -2,7 +2,7 @@
 """
 Segue o caminho do veículo da frente, a uma distância fixa atrás dele.
 
-    ros2 run ftl_follower follower --ros-args -r __ns:=/tractor_1 -p ahead:=/pickup
+    ros2 run ftl_follower_pure_pursuit follower --ros-args -r __ns:=/tractor_1 -p ahead:=/pickup
 
 Lê o `ftl/state` deste veículo e o `ftl/state` do veículo da frente (ambos do
 `pose_estimator`, no referencial compartilhado `ftl_map`) e publica `cmd_vel`.
@@ -30,10 +30,10 @@ Publicados além de `cmd_vel`, para experimentos: `ftl/gap` (metros ao longo do
 caminho) e `ftl/cross_track` (metros fora do caminho, positivo = à esquerda).
 """
 
-from ftl_follower.control import (clamp_curvature, gap_speed, lookahead,
-                                  pure_pursuit_curvature, ramp)
-from ftl_follower.geo import yaw_from_quaternion
-from ftl_follower.trail import Trail
+from ftl_follower_pure_pursuit.control import (clamp_curvature, gap_speed, lookahead,
+                                               pure_pursuit_curvature, ramp)
+from ftl_follower_pure_pursuit.geo import yaw_from_quaternion
+from ftl_follower_pure_pursuit.trail import Trail
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 import rclpy

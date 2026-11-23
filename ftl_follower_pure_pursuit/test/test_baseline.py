@@ -1,7 +1,7 @@
 """
-Guarda da linha de base B0: o lint não mudou o comportamento do ftl_follower.
+Guarda da linha de base B0: o lint não mudou o comportamento do ftl_follower_pure_pursuit.
 
-O ftl_follower é a linha de base B0 do plano (D2) e fica com o algoritmo
+O ftl_follower_pure_pursuit é a linha de base B0 do plano (D2) e fica com o algoritmo
 intacto. O lint da F0.4 só mexe na forma do código: aspas, quebras de linha,
 a ordem dos imports, um import sem uso e as docstrings. Este teste compara a
 forma normalizada de cada arquivo com a que o código tem depois do lint.
@@ -22,20 +22,20 @@ PACKAGE = Path(__file__).resolve().parents[1]
 
 # sha256 da forma normalizada de cada arquivo, depois do lint da F0.4.
 EXPECTED = {
-    'ftl_follower/__init__.py':
+    'ftl_follower_pure_pursuit/__init__.py':
         '3bebd437c9cea372cc2b1f73b1dcc9cf01dc18b48defb40cbf2fb38326f68759',
-    'ftl_follower/control.py':
+    'ftl_follower_pure_pursuit/control.py':
         '30480bacc8e875846ea0cbd491222160ee5c22b31733634fa155af4d6c80c127',
-    'ftl_follower/follower.py':
-        '9920c4723c548d91a81752044ad562af9166dba20fea1a000d4db4f69fe541dd',
-    'ftl_follower/geo.py':
+    'ftl_follower_pure_pursuit/follower.py':
+        '3dfa036fd0157ce243eb5d1779d253efa0869aac95c587ee555211f8d0551862',
+    'ftl_follower_pure_pursuit/geo.py':
         '9c7cd6bddc913646111bad8ec98ece03cb5339cf00c51ff0c0aad636789e0dc5',
-    'ftl_follower/pose_estimator.py':
-        'd22b9d57b0c9391b5ef10cdb9d1051a82f368978496e3810e676e38cd5357078',
-    'ftl_follower/trail.py':
+    'ftl_follower_pure_pursuit/pose_estimator.py':
+        'e8ea1bb435195766665dfd65e6ee46124c83d9a6ce7ea6a95c9acea0184d8d95',
+    'ftl_follower_pure_pursuit/trail.py':
         'b0d2cb750949f3da5e2af214778018ddafd303532a7d4f7a75ce33c8038ee11e',
     'setup.py':
-        'bf8758c199dded2f3a972892e36fbd5b2128b0984f0cb730e126396489816dd3',
+        '04b5a9ffdea3782e63cd2b64ad00959e6de3a71bf2e927bb9730d8b012e08b36',
 }
 
 
@@ -76,7 +76,7 @@ def normalized_form(source):
 
 def current_files():
     """Lista os arquivos que a guarda cobre: os módulos e o setup.py."""
-    modules = sorted((PACKAGE / 'ftl_follower').glob('*.py'))
+    modules = sorted((PACKAGE / 'ftl_follower_pure_pursuit').glob('*.py'))
     return [str(p.relative_to(PACKAGE)) for p in modules] + ['setup.py']
 
 

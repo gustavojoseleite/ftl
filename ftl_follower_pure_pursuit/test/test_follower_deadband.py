@@ -11,7 +11,7 @@ import os
 import random
 import time
 
-from ftl_follower.follower import Follower
+from ftl_follower_pure_pursuit.follower import Follower
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 import pytest
