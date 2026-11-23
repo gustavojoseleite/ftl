@@ -1,0 +1,3 @@
+# Preset: seguidores com uma câmera frontal de 120 graus (o padrão do comboio).
+sensors:
+  camera_mount: single

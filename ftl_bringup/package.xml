@@ -11,6 +11,7 @@
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
 
   <!-- Sem dependência de simulador, de propósito: os cenários que precisam do Gazebo
        ficam no ftl_gz, que depende deste pacote e nunca o contrário. -->
@@ -18,6 +19,13 @@
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>ftl_follower_pure_pursuit</exec_depend>
   <exec_depend>road_follow</exec_depend>
+  <exec_depend>agri_sensor_degradation</exec_depend>
+  <exec_depend>agri_gz_bringup</exec_depend>
+  <exec_depend>agri_gz_worlds</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>rcl_interfaces</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
 
   <test_depend>ament_cmake_pytest</test_depend>
   <test_depend>ament_flake8</test_depend>

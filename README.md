@@ -236,3 +236,54 @@ Saíram também.
 
 O que sobra é a própria estrada, e ela é o alvo melhor. Nada num carreador aqui é desenhado que uma
 estrada patrolada não teria.
+
+## Cenário de experimento
+
+Um experimento sobe com um comando e um cenário. A configuração resolvida é gravada e publicada.
+
+```bash
+ros2 launch ftl_bringup experiment.launch.py scenario:=dual_160 \
+    set:="convoy.followers=2 degradation.gnss=rtk_float degradation.seed=7" output:=/tmp/exp1
+```
+
+O `experiment.launch.py` resolve a configuração (padrões do esquema, depois o preset, depois as
+sobrescritas de `set:=`, no formato `chave=valor` separado por espaços, com o valor lido como YAML)
+e recusa o que for inválido, nomeando a chave. Depois sobe o comboio do `agri_gz_bringup`, os nós do
+FTL e o `apply_scenario`.
+
+- **Presets** (`ftl_bringup/config/scenarios`): `single_120` (uma câmera de 120 graus, o padrão) e
+  `dual_160` (duas câmeras de 90 graus).
+- **`output`**: a pasta que recebe o `config.yaml`. Vazio vira
+  `/workspace/experiments/manual/<AAAAMMDD-HHMMSS>`.
+- **`/experiment/config`**: o texto do `config.yaml` (`std_msgs/String`, QoS `TRANSIENT_LOCAL`,
+  profundidade 1), para qualquer nó ou gravação saber com que cenário o experimento rodou.
+- O `apply_scenario` ajusta, em cada veículo, os parâmetros `profile` e `seed` dos nós `gnss`,
+  `imu` e `odometry` (a semente é `degradation.seed` mais o índice do veículo, 0 para o líder), o
+  `profile` do `distortion_camera_front` dos seguidores e o atuador do `cmd_vel_limiter`. Tenta até
+  4 minutos, até os nós existirem, registra no log o que aplicou e o que faltou e segue vivo.
+
+| Chave | Padrão | Unidade e faixa | Efeito |
+|---|---|---|---|
+| `world` | `citrus_farm.sdf` | um dos cinco mundos do `agri_gz_worlds` | Mundo do Gazebo. |
+| `gui` | `false` | booleano | Abre a janela do Gazebo. |
+| `convoy.leader` | `pickup` | `pickup` ou `autonomous_tractor` | Tipo do veículo da frente. |
+| `convoy.follower` | `autonomous_tractor` | texto | Tipo de cada seguidor. |
+| `convoy.followers` | `4` | veículos, 1 a 4 | Quantos seguidores. |
+| `convoy.spacing` | `10.0` | m, 4 a 30 | Distância entre os `base_link` de dois veículos. |
+| `convoy.yaw` | `0.0` | rad, -pi a pi | Rumo da fila inteira. |
+| `sensors.profile` | `nominal` | `nominal`, `default` ou `ideal` | Perfil de GNSS e IMU. |
+| `sensors.camera_mount` | `single` | `single` ou `dual` | Uma câmera de 120 graus ou duas de 90. |
+| `sensors.tag_family` | `36h11` | texto | Família das tags AprilTag. |
+| `sensors.tag_size` | `0.5` | m, 0,1 a 2 | Lado da tag. |
+| `degradation.gnss` | vazio | vazio ou perfil de gnss | Perfil de degradação do GNSS. |
+| `degradation.imu` | vazio | vazio ou perfil de imu | Perfil de degradação da IMU. |
+| `degradation.odometry` | vazio | vazio ou perfil de odometry | Perfil de degradação da odom. |
+| `degradation.camera` | vazio | vazio ou perfil de camera | Perfil de degradação da câmera. |
+| `degradation.seed` | `0` | inteiro | Semente do ruído; cada veículo soma o seu índice. |
+| `actuator.enabled` | `false` | booleano | Liga o atraso do atuador no `cmd_vel_limiter`. |
+| `actuator.steering_rate` | `0.5` | rad/s, 0,05 a 2,0 | Velocidade máxima de giro da direção. |
+| `actuator.time_constant` | `0.5` | s, 0,05 a 3,0 | Constante de tempo da resposta do atuador. |
+| `ftl.params_file` | vazio | caminho de um arquivo | Parâmetros dos nós do FTL; vazio: o padrão. |
+
+Os perfis de degradação vêm de `agri_sensor_degradation`. Um booleano não vale onde se espera um
+número; um inteiro vale onde se espera um real.
