@@ -2,8 +2,9 @@
 A análise de uma execução: do bag às métricas por trecho e por trator (seção 8.4 do plano).
 
 Python puro, sem ``rclpy``. O caminho de cada veículo é o estimado (``ftl/state``), no ponto de
-referência; o erro lateral de um trator é a distância com sinal ao caminho do líder, e a pose
-real (``ground_truth``) só mede o erro da própria estimativa.
+referência; o erro lateral de um trator é a distância com sinal ao caminho do líder. A pose real
+(``ground_truth``) mede o erro da própria estimativa e, projetada na rota ideal, o erro de cada
+veículo à rota (métricas ``route_``), que mostra o problema da B0.
 """
 
 from collections import namedtuple
@@ -23,6 +24,7 @@ import yaml
 COLUMNS = ['run', 'seed', 'segment', 'kind', 'vehicle', 'metric', 'value']
 START_FRACTION = 0.9  # a partida acaba quando todos passam desta fração do cruzeiro
 MIN_SAMPLES = 3  # menos amostras que isto num trecho não dão métrica
+ROUTE_STEP = 0.5  # passo, em m, da rota amostrada em ``paths``
 EDGE = 1e-6  # folga, em m, para dizer que uma projeção caiu na ponta do caminho
 
 # time e recorded em s; ref é o ponto de referência (n, 2), em m; speed em m/s.
@@ -131,6 +133,44 @@ def _command(samples):
     return Command(data[:, 0], data[:, 1], data[:, 2])
 
 
+def _route_rows(part, lateral, sel):
+    """Dá as métricas do erro à rota, na pose real, de um veículo num trecho."""
+    values = lateral[sel]
+    if len(values) < 2:
+        return []
+    rows = [('route_lateral_mean', float(np.mean(values))),
+            ('route_lateral_rmse', summary(values)['rmse']),
+            ('route_lateral_max', summary(values)['max'])]
+    if part.kind == 'curve':
+        rows.append(('route_corner_cut', corner_cut(values, part.turn)))
+    return rows
+
+
+def _route_error(samples, robots, route, parts, start):
+    """
+    Mede o erro à rota ideal pela pose real, na ordem da fila.
+
+    Returns:
+        As linhas ``(trecho, tipo, veículo, métrica, valor)`` e o RMS do erro de cada veículo na
+        volta, ``nan`` se o veículo não tem a pose real.
+    """
+    rows, norms = [], []
+    for vehicle, robot in robots.items():
+        truth = samples.get(f'/ground_truth/{vehicle}/pose')
+        if not truth:
+            norms.append(math.nan)
+            continue
+        track = _track(truth, robot, False)
+        data = np.array([route.project(x, y) for x, y in track.ref]).reshape(-1, 2)
+        mask = track.time >= start
+        place = np.where(mask, locate(parts, data[:, 0]), -1)
+        for number, part in enumerate(parts):
+            rows += [(part.name, part.kind, vehicle, metric, value)
+                     for metric, value in _route_rows(part, data[:, 1], place == number)]
+        norms.append(_rms(data[mask, 1]))
+    return rows, norms
+
+
 def _rms(values):
     """Dá o RMS de uma série, ou ``nan`` se ela for vazia."""
     return float(np.sqrt(np.mean(values ** 2))) if len(values) else math.nan
@@ -204,8 +244,40 @@ def analyze_run(folder):
     for kind, values in norms.items():
         for name, gamma in zip(names[1:], string_stability(values)):
             rows.append(('lap', 'lap', name, f'gamma_{kind}', gamma))
+    route_rows, route_norms = _route_error(samples, robots, route, context.parts, start)
+    rows += route_rows
+    for name, gamma in zip(names, string_stability(route_norms)):
+        rows.append(('lap', 'lap', name, 'gamma_route', gamma))
     frame = pd.DataFrame(rows, columns=['segment', 'kind', 'vehicle', 'metric', 'value'])
     frame = frame[np.isfinite(frame['value'])]
     frame.insert(0, 'seed', seed)
     frame.insert(0, 'run', f'{folder.parent.name}/{folder.name}')
     return frame.reset_index(drop=True)[COLUMNS]
+
+
+def paths(folder):
+    """
+    Dá a rota ideal e o caminho real de cada veículo, no ponto de referência.
+
+    Args:
+        folder: A pasta da execução, com ``config.yaml`` e ``bag/``.
+
+    Returns:
+        Um dicionário com ``route`` e o nome de cada veículo com pose real, cada um uma matriz
+        ``(n, 2)`` de pontos, em m; o caminho segue a ordem do tempo.
+    """
+    folder = Path(folder)
+    config = yaml.safe_load((folder / 'config.yaml').read_text(encoding='utf-8'))
+    leader = config['convoy']['leader']
+    robots = {leader: leader}
+    robots.update({f'tractor_{i + 1}': config['convoy']['follower']
+                   for i in range(config['convoy']['followers'])})
+    samples = bag.read(folder, [f'/ground_truth/{v}/pose' for v in robots])
+    route = load_route(Path(config['world']).stem)
+    along = np.arange(0.0, route.length, ROUTE_STEP)
+    data = {'route': np.array([route.at(float(s))[:2] for s in along]).reshape(-1, 2)}
+    for vehicle, robot in robots.items():
+        truth = samples.get(f'/ground_truth/{vehicle}/pose')
+        if truth:
+            data[vehicle] = _track(truth, robot, False).ref
+    return data

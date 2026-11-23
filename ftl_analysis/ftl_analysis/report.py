@@ -125,6 +125,94 @@ def lateral_figure(summary, path):
     plt.close(figure)
 
 
+ROUTE_GROUPS = (('straight', 'route_lateral_rmse', 'retas'),
+                ('curve', 'route_corner_cut', 'curvas'))
+
+
+def route_summary(runs):
+    """
+    Resume o erro à rota por rótulo, veículo e tipo de trecho.
+
+    Nas retas vale a média do ``route_lateral_rmse`` e nas curvas, a do ``route_corner_cut``;
+    cada execução dá uma média por veículo e tipo, e o intervalo é entre as execuções.
+
+    Args:
+        runs: O ``DataFrame`` das execuções, com as colunas ``label`` e ``kind``.
+
+    Returns:
+        Um ``DataFrame`` com ``label``, ``kind``, ``vehicle``, ``n``, ``mean`` e ``ci95``; os
+        veículos seguem a ordem da fila.
+    """
+    rows = []
+    for kind, metric, _ in ROUTE_GROUPS:
+        part = runs[(runs.kind == kind) & (runs.metric == metric)]
+        per_run = part.groupby(['label', 'vehicle', 'run'], sort=False)['value'].mean()
+        for (label, vehicle), group in per_run.groupby(level=[0, 1], sort=False):
+            mean, half = mean_ci(group)
+            rows.append((label, kind, vehicle, len(group), mean, half))
+    return pd.DataFrame(rows, columns=['label', 'kind', 'vehicle', 'n', 'mean', 'ci95'])
+
+
+def route_table(summary):
+    """
+    Monta a tabela LaTeX do erro à rota por rótulo, tipo de trecho e veículo.
+
+    Args:
+        summary: O resumo devolvido por ``route_summary``.
+
+    Returns:
+        O texto do ambiente ``tabular``, com a média ± o intervalo de confiança, em m.
+    """
+    vehicles = list(dict.fromkeys(summary.vehicle))
+    lines = [r'\begin{tabular}{ll' + 'r' * len(vehicles) + '}', r'\hline',
+             ' & '.join(['Rótulo', 'Trechos'] + [_escape(v) for v in vehicles]) + r' \\',
+             r'\hline']
+    for label in dict.fromkeys(summary.label):
+        for kind, _, name in ROUTE_GROUPS:
+            group = summary[(summary.label == label) & (summary.kind == kind)]
+            cells = []
+            for vehicle in vehicles:
+                found = group[group.vehicle == vehicle]
+                if found.empty:
+                    cells.append('-')
+                    continue
+                mean, half = found['mean'].iloc[0], found['ci95'].iloc[0]
+                cells.append(f'{mean:.3f}' if pd.isna(half) else f'${mean:.3f} \\pm {half:.3f}$')
+            lines.append(' & '.join([_escape(label), name] + cells) + r' \\')
+    return '\n'.join(lines + [r'\hline', r'\end{tabular}']) + '\n'
+
+
+def route_figure(summary, path):
+    """
+    Desenha o erro à rota por veículo, um painel por rótulo, com o intervalo de confiança.
+
+    Args:
+        summary: O resumo devolvido por ``route_summary``.
+        path: O arquivo PDF a gravar.
+    """
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    labels = list(dict.fromkeys(summary.label))
+    vehicles = list(dict.fromkeys(summary.vehicle))
+    figure, axes = plt.subplots(len(labels), 1, squeeze=False, sharex=True,
+                                figsize=(10, 3 * len(labels)))
+    for axis, label in zip(axes[:, 0], labels):
+        width = 0.8 / len(ROUTE_GROUPS)
+        for k, (kind, metric, name) in enumerate(ROUTE_GROUPS):
+            part = summary[(summary.label == label) & (summary.kind == kind)]
+            found = part.set_index('vehicle').reindex(vehicles)
+            axis.bar([i + k * width for i in range(len(vehicles))], found['mean'].fillna(0),
+                     width, yerr=found['ci95'].fillna(0), capsize=2, label=f'{name}: {metric}')
+        axis.set_xticks([i + 0.4 - width / 2 for i in range(len(vehicles))])
+        axis.set_xticklabels(vehicles)
+        axis.set_ylabel('route error (m)')
+        axis.set_title(label)
+        axis.legend()
+    figure.tight_layout()
+    figure.savefig(path)
+    plt.close(figure)
+
+
 def main(argv=None):
     """Analisa uma campanha e grava as tabelas e a figura na pasta de saída."""
     parser = argparse.ArgumentParser(description='Compute the metrics of a campaign.')
@@ -151,4 +239,8 @@ def main(argv=None):
     summary.to_csv(out / 'metrics_summary.csv', index=False)
     (out / 'table_lateral.tex').write_text(lateral_table(summary), encoding='utf-8')
     lateral_figure(summary, out / 'lateral_rmse.pdf')
+    by_route = route_summary(runs)
+    if not by_route.empty:
+        (out / 'table_route.tex').write_text(route_table(by_route), encoding='utf-8')
+        route_figure(by_route, out / 'route_error.pdf')
     LOG.info('wrote the tables and the figure to %s', out)
