@@ -10,7 +10,8 @@ from rcl_interfaces.msg import FloatingPointRange, ParameterDescriptor
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
-from std_msgs.msg import Float64
+from rclpy.qos import DurabilityPolicy, QoSProfile
+from std_msgs.msg import Bool, Float64
 
 RATE = 20.0  # frequência do controle, em Hz
 MAX_CURVATURE = 0.6  # limite da curvatura comandada, em 1/m
@@ -61,6 +62,9 @@ class RouteDriverNode(Node):
         self.pub = self.create_publisher(Twist, 'cmd_vel', 10)
         self.error_pub = self.create_publisher(Float64, 'route/error', 10)
         self.progress_pub = self.create_publisher(Float64, 'route/progress', 10)
+        self.done_pub = self.create_publisher(Bool, 'route/done', QoSProfile(
+            depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL))
+        self.done_sent = False
         for name, callback in ((self.get_parameter('leader').value, self.on_leader),
                                (self.get_parameter('last').value, self.on_last)):
             self.create_subscription(PoseStamped, f'/ground_truth/{name}/pose', callback, 10)
@@ -89,6 +93,9 @@ class RouteDriverNode(Node):
         dt = 0.0 if self.time is None else min(now - self.time, 0.5)
         self.time = now
         done = self.last_s is not None and finished(self.route, self.last_s)
+        if done and not self.done_sent:
+            self.done_pub.publish(Bool(data=True))
+            self.done_sent = True
         target = 0.0 if done else speed_at(self.profile, self.leader_s)
         delta = RAMP * dt
         self.speed += max(-delta, min(delta, target - self.speed))

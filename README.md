@@ -12,6 +12,7 @@ road_follow/      dirige um veículo pelos carreadores pela câmera — o motori
 ftl_bringup/      os nós do FTL e seus parâmetros, num launch só. Sem simulador.
 ├── launch/ftl.launch.py
 └── config/ftl.yaml           um arquivo por experimento é o uso pretendido
+ftl_experiments/  o executor de experimentos: roda um cenário com várias sementes e grava os bags
 ftl_gz/           cenários de teste do FTL no Gazebo: mundo, líder, seguidores, onde começam
 ├── launch/sim.launch.py      só o cenário (mundo + comboio)
 └── launch/ftl_sim.launch.py  o cenário e os nós do FTL, num comando
@@ -173,8 +174,9 @@ envia `x`, `y`, `z` e `yaw`).
   `/ground_truth/<leader>/pose`, a 20 Hz. Para quando o último trator (`last`) passa o fim da
   última curva. Parâmetros: `route`, `cruise_kmh`, `a_lat`, `leader` e `last`.
 - **Tópicos**, no namespace do líder: `cmd_vel` (`geometry_msgs/Twist`), `route/error`
-  (`std_msgs/Float64`, erro lateral em m, positivo à esquerda) e `route/progress` (`Float64`,
-  metros desde o início).
+  (`std_msgs/Float64`, erro lateral em m, positivo à esquerda), `route/progress` (`Float64`,
+  metros desde o início) e `route/done` (`std_msgs/Bool`, QoS `TRANSIENT_LOCAL`, profundidade 1),
+  publicado uma vez, com `True`, quando o último trator passa o fim da última curva.
 
 ## Linha de base B0
 
@@ -315,3 +317,40 @@ FTL e o `apply_scenario`.
 
 Os perfis de degradação vêm de `agri_sensor_degradation`. Um booleano não vale onde se espera um
 número; um inteiro vale onde se espera um real.
+
+## ftl_experiments: o executor de experimentos
+
+O comando `run` roda um cenário uma vez por semente e grava, por execução, o bag MCAP, a
+configuração e o `run.yaml`.
+
+```bash
+ros2 run ftl_experiments run --campaign c1 --scenario single_120 \
+    --set "world=citrus_farm_90.sdf convoy.followers=2 route.enabled=true" --seeds 1,2,3
+```
+
+Argumentos: `--campaign` (obrigatório), `--scenario` (`single_120`), `--set` (as sobrescritas, como
+no `experiment.launch.py`), `--seeds` (`1,2,3`), `--root` (`/workspace/experiments`), `--label` (o
+nome da variante; o padrão é o cenário) e `--duration` (sobrepõe o tempo limite, em s). Cada
+execução ganha `degradation.seed` igual à semente e `gui=false`.
+
+- **Pasta**: `<root>/<campaign>/<label>/<semente>/`, com `config.yaml` (a configuração resolvida),
+  `bag/` (o MCAP), `launch.log` e `run.yaml`.
+- **`run.yaml`**: `reason` (`done`, `timeout` ou `failed`), `duration` (s), `seed` e `commits` (o
+  `git rev-parse HEAD` de cada repositório de `FTL_WORKSPACE_SRC`, padrão `/workspace/src`).
+- **Fim da execução**: o `route/done` do líder (`done`), o tempo limite (`timeout`: 2 vezes o
+  tempo da volta à velocidade de cruzeiro mais 120 s; sem rota, 600 s) ou a morte do launch
+  (`failed`). O bag é encerrado antes do launch, para o arquivo fechar. O comando imprime uma linha
+  por execução, com a pasta e o motivo.
+- **Tópicos gravados**, para cada veículo `v` (o líder e os `tractor_N`):
+  - `/ground_truth/<v>/pose`: a pose real, que serve ao erro de estimação (seção 8.4 do plano);
+  - `/<v>/ftl/state`: o caminho estimado, usado nas métricas;
+  - `/<v>/cmd_vel`: o comando enviado ao veículo;
+  - `/<v>/degradation/state`: a degradação ativa dos sensores;
+  - `/<tractor>/ftl/gap` e `/<tractor>/ftl/cross_track`: a distância e o erro lateral de cada
+    seguidor;
+  - `/<líder>/route/error`, `/<líder>/route/progress` e `/<líder>/route/done`, com a rota ligada:
+    o erro lateral, o progresso e o fim do protocolo;
+  - `/experiment/config`: a configuração do experimento;
+  - `/clock`: o tempo da simulação.
+- **Retomada**: ao rodar de novo o mesmo comando, só as sementes sem `run.yaml` com `done` rodam;
+  as que terminaram em `timeout` ou `failed` repetem, e o bag anterior é apagado.
