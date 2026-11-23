@@ -22,6 +22,7 @@ setup(
     entry_points={
         'console_scripts': [
             'run = ftl_experiments.cli:main',
+            'suite = ftl_experiments.suite:main',
         ],
     },
 )

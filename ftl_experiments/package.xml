@@ -11,6 +11,8 @@
   <exec_depend>ftl_route_driver</exec_depend>
   <exec_depend>rosbag2_py</exec_depend>
   <exec_depend>std_msgs</exec_depend>
+  <exec_depend>rosgraph_msgs</exec_depend>
+  <exec_depend>ftl_analysis</exec_depend>
   <exec_depend>rclpy</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
   <exec_depend>git</exec_depend>

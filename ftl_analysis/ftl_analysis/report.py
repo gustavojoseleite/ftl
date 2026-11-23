@@ -19,20 +19,22 @@ LOG = logging.getLogger('ftl_analysis')
 SUMMARY_COLUMNS = ['label', 'segment', 'vehicle', 'metric', 'n', 'mean', 'ci95']
 
 
-def find_runs(campaign):
+def find_runs(campaign, reasons=('done',)):
     """
     Acha as execuções terminadas de uma campanha.
 
     Args:
         campaign: A pasta da campanha.
+        reasons: Os motivos de fim aceitos no ``run.yaml``.
 
     Returns:
-        As pastas ``<campanha>/<rótulo>/<semente>`` com ``run.yaml`` de motivo ``done``, em ordem.
+        As pastas ``<campanha>/<rótulo>/<semente>`` com ``run.yaml`` de motivo em ``reasons``,
+        em ordem.
     """
     runs = []
     for path in sorted(Path(campaign).glob('*/*/run.yaml')):
         reason = yaml.safe_load(path.read_text(encoding='utf-8')).get('reason')
-        if reason == 'done':
+        if reason in reasons:
             runs.append(path.parent)
         else:
             LOG.warning('skipping %s: reason is %s', path.parent, reason)
@@ -128,12 +130,14 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description='Compute the metrics of a campaign.')
     parser.add_argument('campaign', help='campaign folder, with <label>/<seed>/ runs')
     parser.add_argument('--out', default=None, help='output folder; default <campaign>/analysis')
+    parser.add_argument('--reasons', default='done',
+                        help='comma-separated run reasons to analyze; default done')
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
     campaign = Path(args.campaign)
     out = Path(args.out) if args.out else campaign / 'analysis'
     frames = []
-    for folder in find_runs(campaign):
+    for folder in find_runs(campaign, tuple(args.reasons.split(','))):
         LOG.info('analyzing %s', folder)
         frame = analyze_run(folder)
         frame.insert(0, 'label', folder.parent.name)

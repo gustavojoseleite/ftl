@@ -221,3 +221,23 @@ def convoy_arguments(config):
         'tag_size': sensors['tag_size'],
     }
     return {name: str(value) for name, value in args.items()}
+
+
+def driver_parameters(config):
+    """
+    Os parâmetros do `route_driver` a partir da configuração resolvida.
+
+    O `wait_for` lista o `ftl/state` de todos os veículos, do líder ao último trator: o líder só
+    arranca depois que todos os estimadores publicaram.
+    """
+    leader = config['convoy']['leader']
+    tractors = [f'tractor_{i + 1}' for i in range(config['convoy']['followers'])]
+    return {
+        'route': Path(config['world']).stem,
+        'cruise_kmh': float(config['route']['cruise_kmh']),
+        'a_lat': config['route']['a_lat'],
+        'leader': leader,
+        'last': tractors[-1],
+        'use_sim_time': True,
+        'wait_for': [f'/{name}/ftl/state' for name in [leader] + tractors],
+    }

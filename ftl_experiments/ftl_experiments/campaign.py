@@ -82,15 +82,84 @@ def time_limit(config):
     return 2.0 * length / cruise + START_MARGIN
 
 
-def write_run(path, reason, duration, seed, commits):
-    """Grava o ``run.yaml`` na pasta; ``reason`` é ``done``, ``timeout`` ou ``failed``."""
+def write_run(path, reason, duration, seed, commits, attempts=None):
+    """
+    Grava o ``run.yaml`` na pasta; ``reason`` é ``done``, ``timeout`` ou ``failed``.
+
+    O campo ``attempts`` só é gravado quando ``attempts`` vem.
+    """
     if reason not in REASONS:
         raise ValueError(f'reason must be one of {REASONS}, got {reason!r}')
     path = Path(path)
     path.mkdir(parents=True, exist_ok=True)
     data = {'reason': reason, 'duration': float(duration), 'seed': seed,
             'commits': dict(commits)}
+    if attempts is not None:
+        data['attempts'] = attempts
     (path / 'run.yaml').write_text(yaml.safe_dump(data, sort_keys=False), encoding='utf-8')
+
+
+class Deadline:
+    """
+    O prazo de uma execução, medido no tempo simulado.
+
+    Args:
+        limit: O limite, em s simulados, contado a partir do primeiro ``/clock``.
+        stall: Quanto o ``/clock`` pode ficar parado, em s de parede, antes de ``failed``.
+        startup: Quanto o ``/clock`` pode demorar a começar, em s de parede.
+    """
+
+    def __init__(self, limit, stall=60.0, startup=300.0):
+        self.limit = limit
+        self.stall = stall
+        self.startup = startup
+        self.first = None  # primeiro tempo simulado visto
+        self.last = None  # último tempo simulado visto
+        self.moved = 0.0  # tempo de parede em que o relógio avançou pela última vez
+
+    def check(self, sim, wall):
+        """
+        Avalia o prazo.
+
+        Args:
+            sim: O tempo simulado, em s, ou ``None`` se o ``/clock`` ainda não chegou.
+            wall: O tempo de parede desde o início da execução, em s.
+
+        Returns:
+            ``None`` enquanto segue, ``'timeout'`` ao passar do limite simulado e ``'failed'``
+            se o ``/clock`` não começa ou para de avançar.
+        """
+        if sim is None:
+            return 'failed' if wall > self.startup else None
+        if self.first is None:
+            self.first = sim
+        if self.last is None or sim > self.last:
+            self.last = sim
+            self.moved = wall
+        if sim - self.first > self.limit:
+            return 'timeout'
+        if wall - self.moved > self.stall:
+            return 'failed'
+        return None
+
+
+def retry(attempt, retries):
+    """
+    Repete ``attempt`` enquanto o motivo do fim for ``failed``.
+
+    Args:
+        attempt: Função sem argumentos que roda a execução e devolve o motivo do fim.
+        retries: O máximo de repetições, além da primeira tentativa.
+
+    Returns:
+        A tupla ``(motivo, tentativas)``.
+    """
+    attempts = 1
+    reason = attempt()
+    while reason == 'failed' and attempts <= retries:
+        attempts += 1
+        reason = attempt()
+    return reason, attempts
 
 
 def read_run(path):

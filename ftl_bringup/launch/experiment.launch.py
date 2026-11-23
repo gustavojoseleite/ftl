@@ -50,12 +50,7 @@ def launch_setup(context, *args, **kwargs):
         actions.append(Node(
             package='ftl_route_driver', executable='route_driver', name='route_driver',
             namespace=leader, output='screen',
-            parameters=[{'route': Path(config['world']).stem,
-                         'cruise_kmh': config['route']['cruise_kmh'],
-                         'a_lat': config['route']['a_lat'],
-                         'leader': leader,
-                         'last': f"tractor_{config['convoy']['followers']}",
-                         'use_sim_time': True}]))
+            parameters=[scenario.driver_parameters(config)]))
     return actions
 
 
