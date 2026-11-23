@@ -12,6 +12,8 @@ import shlex
 
 import yaml
 
+from ftl_route_driver import routes
+
 
 class ScenarioError(ValueError):
     """Configuração inválida; a mensagem nomeia a chave e o problema."""
@@ -49,8 +51,13 @@ SCHEMA = [
          effect='Tipo do veículo da frente.'),
     _key('convoy.follower', 'autonomous_tractor', effect='Tipo de cada seguidor.'),
     _key('convoy.followers', 4, 'int', 1, 4, unit='veículos', effect='Quantos seguidores.'),
-    _key('convoy.spacing', 10.0, 'float', 4.0, 30.0, unit='m',
-         effect='Distância entre os `base_link` de dois veículos.'),
+    _key('convoy.spacing', 7.95, 'float', 4.0, 30.0, unit='m',
+         effect='Distância entre os `base_link` de dois veículos; 7,95 deixa 4 m entre '
+                'para-choques.'),
+    _key('convoy.x', 0.0, 'float', -500.0, 500.0, unit='m',
+         effect='Posição X da fila inteira; com a rota ligada vale o início da rota.'),
+    _key('convoy.y', 0.0, 'float', -500.0, 500.0, unit='m',
+         effect='Posição Y da fila inteira; com a rota ligada vale o início da rota.'),
     _key('convoy.yaw', 0.0, 'float', -math.pi, math.pi, unit='rad',
          effect='Rumo da fila inteira.'),
     _key('sensors.profile', 'nominal', choices=['nominal', 'default', 'ideal'],
@@ -75,6 +82,12 @@ SCHEMA = [
          effect='Velocidade máxima de giro da direção.'),
     _key('actuator.time_constant', 0.5, 'float', 0.05, 3.0, unit='s',
          effect='Constante de tempo da resposta do atuador.'),
+    _key('route.enabled', False, 'bool',
+         effect='O líder percorre sozinho a rota do mundo, pelo `route_driver`.'),
+    _key('route.cruise_kmh', 10.8, 'float', 1.0, 40.0, unit='km/h',
+         effect='Velocidade de cruzeiro do líder nas retas.'),
+    _key('route.a_lat', 1.0, 'float', 0.2, 3.0, unit='m/s²',
+         effect='Aceleração lateral máxima nas curvas; limita a velocidade nelas.'),
     _key('ftl.params_file', '',
          effect='Parâmetros dos nós do FTL; vazio usa o `ftl.yaml` padrão.'),
 ]
@@ -165,6 +178,11 @@ def resolve(preset, overrides=None):
         for parent in parents:
             node = node.setdefault(parent, {})
         node[leaf] = value
+    if config['route']['enabled']:
+        name = Path(config['world']).stem
+        if name not in routes.ROUTES:
+            raise ScenarioError(f"route.enabled: world {config['world']!r} has no route; "
+                                f"worlds with a route: {routes.ROUTES}")
     return config
 
 
@@ -181,6 +199,11 @@ def read(path):
 def convoy_arguments(config):
     """Os argumentos de texto do `convoy.launch.py` do `agri_gz_bringup`."""
     convoy, sensors = config['convoy'], config['sensors']
+    if config['route']['enabled']:
+        start = routes.route(Path(config['world']).stem)
+        (x, y, yaw), z = start.start, start.start_z
+    else:
+        x, y, yaw, z = convoy['x'], convoy['y'], convoy['yaw'], 0.0
     args = {
         'world': config['world'],
         'gui': str(config['gui']).lower(),
@@ -188,7 +211,10 @@ def convoy_arguments(config):
         'follower': convoy['follower'],
         'followers': convoy['followers'],
         'spacing': convoy['spacing'],
-        'yaw': convoy['yaw'],
+        'x': x,
+        'y': y,
+        'z': z,
+        'yaw': yaw,
         'sensor_profile': sensors['profile'],
         'camera_mount': sensors['camera_mount'],
         'tag_family': sensors['tag_family'],

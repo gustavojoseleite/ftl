@@ -39,12 +39,24 @@ def launch_setup(context, *args, **kwargs):
                      'followers': str(config['convoy']['followers'])}
     if config['ftl']['params_file']:
         ftl_arguments['params_file'] = config['ftl']['params_file']
-    return [
+    actions = [
         include('agri_gz_bringup', 'convoy.launch.py', scenario.convoy_arguments(config)),
         include('ftl_bringup', 'ftl.launch.py', ftl_arguments),
         Node(package='ftl_bringup', executable='apply_scenario', name='apply_scenario',
              arguments=[str(config_path)], output='screen'),
     ]
+    if config['route']['enabled']:
+        leader = config['convoy']['leader']
+        actions.append(Node(
+            package='ftl_route_driver', executable='route_driver', name='route_driver',
+            namespace=leader, output='screen',
+            parameters=[{'route': Path(config['world']).stem,
+                         'cruise_kmh': config['route']['cruise_kmh'],
+                         'a_lat': config['route']['a_lat'],
+                         'leader': leader,
+                         'last': f"tractor_{config['convoy']['followers']}",
+                         'use_sim_time': True}]))
+    return actions
 
 
 def generate_launch_description():

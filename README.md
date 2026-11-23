@@ -16,6 +16,7 @@ ftl_gz/           cenários de teste do FTL no Gazebo: mundo, líder, seguidores
 ├── launch/sim.launch.py      só o cenário (mundo + comboio)
 └── launch/ftl_sim.launch.py  o cenário e os nós do FTL, num comando
 ftl_msgs/         as mensagens que ligam os módulos da solução
+ftl_route_driver/ o motorista roteirizado do líder: percorre a rota do mundo sozinho
 ftl_template/     o pacote modelo: copie-o para começar um pacote novo
 ```
 
@@ -153,6 +154,28 @@ que roda os testes de unidade, o lint e a guarda.
 Os seguidores levam GNSS e IMU, mas não câmera (`followers_camera:=false` no comboio), então o
 comboio custa uma câmera, qualquer que seja o tamanho dele.
 
+## ftl_route_driver: o líder percorre a rota sozinho
+
+Com `route.enabled=true`, o `experiment.launch.py` sobe o `route_driver` no namespace do líder, e a
+fila nasce no início da rota, na altura do chão ali (`convoy_arguments`
+envia `x`, `y`, `z` e `yaw`).
+
+- **Rotas** (`routes.py`, o nome é o do mundo sem `.sdf`): `citrus_farm` (a volta `lap` do
+  `road_follow`) e os perímetros `citrus_farm_30`, `citrus_farm_60` e `citrus_farm_90`, pela mesma
+  fórmula do gerador dos mundos. `route(nome)` devolve uma `Route` com `length`, `start`,
+  `start_z`, `turns`, `at`, `curvature` e `project`; `terrain_height(x)` é o relevo dos mundos.
+- **Perfil** (`profile.py`): `speed_profile` dá `v = min(cruzeiro, sqrt(a_lat / |curvatura|))`,
+  antecipado para trás com desaceleração de 1 m/s²; `speed_at` o interpola.
+- **Protocolo** (`protocol.py`): `spacing(gap)` dá a distância entre `base_link` para `gap` metros
+  entre para-choques; `finished(route, s)` diz se `s` passou do fim da última curva; `Progress`
+  dá o progresso contínuo, mesmo na volta fechada.
+- **Nó `route_driver`**: pure pursuit com visada `max(4, v)` m sobre a pose real de
+  `/ground_truth/<leader>/pose`, a 20 Hz. Para quando o último trator (`last`) passa o fim da
+  última curva. Parâmetros: `route`, `cruise_kmh`, `a_lat`, `leader` e `last`.
+- **Tópicos**, no namespace do líder: `cmd_vel` (`geometry_msgs/Twist`), `route/error`
+  (`std_msgs/Float64`, erro lateral em m, positivo à esquerda) e `route/progress` (`Float64`,
+  metros desde o início).
+
 ## Linha de base B0
 
 A B0 é o pacote `ftl_follower_pure_pursuit`: o seguidor da monografia, congelado (D2), com o
@@ -269,7 +292,9 @@ FTL e o `apply_scenario`.
 | `convoy.leader` | `pickup` | `pickup` ou `autonomous_tractor` | Tipo do veículo da frente. |
 | `convoy.follower` | `autonomous_tractor` | texto | Tipo de cada seguidor. |
 | `convoy.followers` | `4` | veículos, 1 a 4 | Quantos seguidores. |
-| `convoy.spacing` | `10.0` | m, 4 a 30 | Distância entre os `base_link` de dois veículos. |
+| `convoy.spacing` | `7.95` | m, 4 a 30 | Distância entre `base_link`; 7,95 dá 4 m de folga. |
+| `convoy.x` | `0.0` | m, -500 a 500 | Posição X da fila; com a rota ligada, vale o início dela. |
+| `convoy.y` | `0.0` | m, -500 a 500 | Posição Y da fila; com a rota ligada, vale o início dela. |
 | `convoy.yaw` | `0.0` | rad, -pi a pi | Rumo da fila inteira. |
 | `sensors.profile` | `nominal` | `nominal`, `default` ou `ideal` | Perfil de GNSS e IMU. |
 | `sensors.camera_mount` | `single` | `single` ou `dual` | Uma câmera de 120 graus ou duas de 90. |
@@ -283,6 +308,9 @@ FTL e o `apply_scenario`.
 | `actuator.enabled` | `false` | booleano | Liga o atraso do atuador no `cmd_vel_limiter`. |
 | `actuator.steering_rate` | `0.5` | rad/s, 0,05 a 2,0 | Velocidade máxima de giro da direção. |
 | `actuator.time_constant` | `0.5` | s, 0,05 a 3,0 | Constante de tempo da resposta do atuador. |
+| `route.enabled` | `false` | booleano | O líder percorre a rota do mundo; sem rota, recusa. |
+| `route.cruise_kmh` | `10.8` | km/h, 1 a 40 | Velocidade de cruzeiro do líder nas retas. |
+| `route.a_lat` | `1.0` | m/s², 0,2 a 3 | Aceleração lateral máxima; limita a velocidade. |
 | `ftl.params_file` | vazio | caminho de um arquivo | Parâmetros dos nós do FTL; vazio: o padrão. |
 
 Os perfis de degradação vêm de `agri_sensor_degradation`. Um booleano não vale onde se espera um
