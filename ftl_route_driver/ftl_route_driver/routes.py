@@ -55,6 +55,7 @@ class Route:
                 ``('turn', graus, raio_m)``; graus positivos viram à esquerda.
             start: ``(x, y, rumo)`` do início, com o rumo em rad.
         """
+        self.pieces = [tuple(piece) for piece in pieces]
         x, y, heading = start
         columns = [[], [], [], [], []]  # s, x, y, rumo, curvatura
         s = 0.0
