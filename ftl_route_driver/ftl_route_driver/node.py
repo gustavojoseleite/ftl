@@ -6,10 +6,12 @@ from ftl_route_driver.profile import speed_at, speed_profile
 from ftl_route_driver.protocol import finished, Progress
 from ftl_route_driver.routes import route as load_route
 from geometry_msgs.msg import PoseStamped, Twist
+from nav_msgs.msg import Odometry
 from rcl_interfaces.msg import FloatingPointRange, ParameterDescriptor
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
+from rclpy.parameter import Parameter
 from rclpy.qos import DurabilityPolicy, QoSProfile
 from std_msgs.msg import Bool, Float64
 
@@ -49,6 +51,10 @@ class RouteDriverNode(Node):
         self.declare_parameter('last', 'tractor_1', ParameterDescriptor(
             description='Nome do último trator, em /ground_truth/<nome>/pose. Unidade: texto. '
                         'Efeito: a rota termina quando ele passa a última curva.'))
+        self.declare_parameter('wait_for', Parameter.Type.STRING_ARRAY, ParameterDescriptor(
+            description='Tópicos nav_msgs/Odometry a esperar antes de arrancar. Unidade: lista '
+                        'de texto. Padrão: vazia. Efeito: enquanto algum não publicou, a '
+                        'velocidade alvo é zero.'))
         self.route = load_route(self.get_parameter('route').value)
         cruise = self.get_parameter('cruise_kmh').value / 3.6
         self.profile = speed_profile(self.route, cruise, self.get_parameter('a_lat').value)
@@ -68,7 +74,18 @@ class RouteDriverNode(Node):
         for name, callback in ((self.get_parameter('leader').value, self.on_leader),
                                (self.get_parameter('last').value, self.on_last)):
             self.create_subscription(PoseStamped, f'/ground_truth/{name}/pose', callback, 10)
+        value = self.get_parameter_or('wait_for', Parameter('wait_for', value=[])).value
+        self.waiting = set(value or [])
+        for topic in sorted(self.waiting):
+            self.create_subscription(Odometry, topic, lambda _, t=topic: self.on_ready(t), 10)
         self.create_timer(1.0 / RATE, self.step)
+
+    def on_ready(self, topic):
+        """Marca o tópico como publicado e registra quando o último chega."""
+        if topic in self.waiting:
+            self.waiting.discard(topic)
+            if not self.waiting:
+                self.get_logger().info('all wait_for topics published; the leader may start')
 
     def on_leader(self, msg):
         """Guarda a pose real do líder e o progresso dele."""
@@ -96,7 +113,7 @@ class RouteDriverNode(Node):
         if done and not self.done_sent:
             self.done_pub.publish(Bool(data=True))
             self.done_sent = True
-        target = 0.0 if done else speed_at(self.profile, self.leader_s)
+        target = 0.0 if done or self.waiting else speed_at(self.profile, self.leader_s)
         delta = RAMP * dt
         self.speed += max(-delta, min(delta, target - self.speed))
         lookahead = max(4.0, self.speed)

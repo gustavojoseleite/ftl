@@ -173,7 +173,13 @@ envia `x`, `y`, `z` e `yaw`).
   dá o progresso contínuo, mesmo na volta fechada.
 - **Nó `route_driver`**: pure pursuit com visada `max(4, v)` m sobre a pose real de
   `/ground_truth/<leader>/pose`, a 20 Hz. Para quando o último trator (`last`) passa o fim da
-  última curva. Parâmetros: `route`, `cruise_kmh`, `a_lat`, `leader` e `last`.
+  última curva. Parâmetros: `route`, `cruise_kmh`, `a_lat`, `leader`, `last` e `wait_for`.
+- **Espera da partida** (`wait_for`, lista de tópicos `nav_msgs/Odometry`, vazia por padrão): o nó
+  assina cada tópico, e enquanto algum não publicou a velocidade alvo é zero, com o `cmd_vel`
+  publicado normalmente. Quando o último chega, o nó registra isso no log. O
+  `experiment.launch.py` passa o `ftl/state` do líder e de cada trator (`driver_parameters`, em
+  `scenario.py`). O motivo (R6): se o líder arranca antes dos estimadores, eles começam a
+  estimar com o líder já em movimento e o erro de estimação chega a 1-5 m.
 - **Tópicos**, no namespace do líder: `cmd_vel` (`geometry_msgs/Twist`), `route/error`
   (`std_msgs/Float64`, erro lateral em m, positivo à esquerda), `route/progress` (`Float64`,
   metros desde o início) e `route/done` (`std_msgs/Bool`, QoS `TRANSIENT_LOCAL`, profundidade 1),
@@ -331,17 +337,24 @@ ros2 run ftl_experiments run --campaign c1 --scenario single_120 \
 
 Argumentos: `--campaign` (obrigatório), `--scenario` (`single_120`), `--set` (as sobrescritas, como
 no `experiment.launch.py`), `--seeds` (`1,2,3`), `--root` (`/workspace/experiments`), `--label` (o
-nome da variante; o padrão é o cenário) e `--duration` (sobrepõe o tempo limite, em s). Cada
-execução ganha `degradation.seed` igual à semente e `gui=false`.
+nome da variante; o padrão é o cenário), `--duration` (sobrepõe o tempo limite, em s simulados)
+e `--retries` (as repetições de uma execução `failed`; padrão 1). Cada execução ganha
+`degradation.seed` igual à semente e `gui=false`.
 
 - **Pasta**: `<root>/<campaign>/<label>/<semente>/`, com `config.yaml` (a configuração resolvida),
   `bag/` (o MCAP), `launch.log` e `run.yaml`.
-- **`run.yaml`**: `reason` (`done`, `timeout` ou `failed`), `duration` (s), `seed` e `commits` (o
-  `git rev-parse HEAD` de cada repositório de `FTL_WORKSPACE_SRC`, padrão `/workspace/src`).
+- **`run.yaml`**: `reason` (`done`, `timeout` ou `failed`), `duration` (s), `seed`, `commits` (o
+  `git rev-parse HEAD` de cada repositório de `FTL_WORKSPACE_SRC`, padrão `/workspace/src`) e
+  `attempts` (as tentativas feitas). O motivo do `attempts` (R7): uma partida do Gazebo falha às
+  vezes sem culpa do experimento, e a repetição evita um buraco na campanha; o campo mostra
+  quais execuções precisaram dela.
 - **Fim da execução**: o `route/done` do líder (`done`), o tempo limite (`timeout`: 2 vezes o
   tempo da volta à velocidade de cruzeiro mais 120 s; sem rota, 600 s) ou a morte do launch
-  (`failed`). O bag é encerrado antes do launch, para o arquivo fechar. O comando imprime uma linha
-  por execução, com a pasta e o motivo.
+  (`failed`). O tempo limite é medido no tempo simulado, pelo `/clock` (`Deadline`), e conta a
+  partir do primeiro `/clock`; o `--duration` também é em segundos simulados. Duas esperas em
+  tempo de parede dão `failed`: o `/clock` que não começa em 300 s (partida) e o que não avança
+  por 60 s (travamento). O bag é encerrado antes do launch, para o arquivo fechar. O comando
+  imprime uma linha por execução, com a pasta e o motivo.
 - **Tópicos gravados**, para cada veículo `v` (o líder e os `tractor_N`):
   - `/ground_truth/<v>/pose`: a pose real, que serve ao erro de estimação (seção 8.4 do plano);
   - `/<v>/ftl/state`: o caminho estimado, usado nas métricas;
@@ -356,6 +369,26 @@ execução ganha `degradation.seed` igual à semente e `gui=false`.
 - **Retomada**: ao rodar de novo o mesmo comando, só as sementes sem `run.yaml` com `done` rodam;
   as que terminaram em `timeout` ou `failed` repetem, e o bag anterior é apagado.
 
+### O conjunto básico: o comando `suite`
+
+```bash
+ros2 run ftl_experiments suite --campaign basico
+ros2 run ftl_experiments suite --campaign teste --quick
+```
+
+O `suite` roda o `run` com `single_120` para cada caso, com as sementes 1 a `--reps` (3), e no
+fim roda o `analyze` em `<raiz>/<campanha>`, com a saída em `<raiz>/<campanha>/analysis`. Os
+argumentos são `--campaign`, `--reps` (3), `--quick`, `--root` (`/workspace/experiments`) e
+`--retries` (1). Sai com o código da análise.
+
+- **Os 12 casos** (`basic()`): o rótulo é `p<ângulo>_<velocidade>kmh`, com o ponto da velocidade
+  trocado por `_`. Os ângulos são 30, 60 e 90, e as velocidades, 5, 10,8, 20 e 40 km/h; por
+  exemplo, `p30_5kmh`, `p60_10_8kmh` e `p90_40kmh`. Todos têm 4 tratores, rota ligada e uma
+  câmera (`camera_mount=single`).
+- **Modo rápido** (`--quick`): só o caso `quick` (`quick()`: ângulo 90, 10,8 km/h), com a semente
+  1 e `--duration` de `QUICK_DURATION` (120 s simulados). Termina por `timeout`, então a análise
+  usa `--reasons done,timeout`.
+
 ## ftl_analysis: as métricas de uma campanha
 
 O comando `analyze` transforma a pasta de uma campanha nas tabelas e na figura das métricas, com a
@@ -366,7 +399,9 @@ ros2 run ftl_analysis analyze /workspace/experiments/c1 --out /workspace/experim
 ```
 
 A campanha tem as execuções em `<campanha>/<rótulo>/<semente>/`, como o `ftl_experiments` as grava;
-só entram as de `run.yaml` com `reason: done`, e as outras são avisadas e puladas. A saída padrão é
+só entram as de `run.yaml` com `reason: done`, e as outras são avisadas e puladas. O `--reasons`
+(lista separada por vírgula, padrão `done`) muda os motivos aceitos; o modo rápido do `suite` usa
+`--reasons done,timeout`. A saída padrão é
 `<campanha>/analysis`. O comando `bag_info <pasta da execução>` lista os tópicos de um bag.
 
 - **Saídas**:
