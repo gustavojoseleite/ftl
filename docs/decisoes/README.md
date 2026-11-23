@@ -4,7 +4,7 @@ Esta pasta guarda as decisões de projeto que mudam o texto da dissertação. Ca
 
 | Decisão | Registro | O que muda no texto |
 |---|---|---|
-| D4 | [D04-distancia-arco.md](D04-distancia-arco.md) | Eq. 4.2, distância pelo arco no trilho |
+| D4 | [D04-distancia-arco.md](D04-distancia-arco.md) | Eq. 4.2, distância pelo arco ou euclidiana, por parâmetro |
 | D5 | [D05-erro-lateral-linha-de-visada.md](D05-erro-lateral-linha-de-visada.md) | Eq. 4.5, erro de rumo pela linha de visada |
 | D7 | [D07-ukf-proprio.md](D07-ukf-proprio.md) | seção 4.2, UKF próprio e NEES |
 | D9 | [D09-propagacao-em-cascata.md](D09-propagacao-em-cascata.md) | seção 4.3.1, trilho em cascata |

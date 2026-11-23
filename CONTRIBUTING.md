@@ -86,9 +86,9 @@ de integração com launch_testing, que sobem os nós de verdade; e os testes de
 junto. Rodam todos no container, pelo `test.sh`, da pasta do repositório ou do worktree:
 
 ```bash
-~/dev/ros2/scripts/test.sh ftl_follower               # um pacote, tudo
-~/dev/ros2/scripts/test.sh ftl_follower ftl_template  # vários pacotes
-~/dev/ros2/scripts/test.sh ftl_follower -k lookahead  # só os que têm o nome na expressão
+~/dev/ros2/scripts/test.sh ftl_follower_pure_pursuit               # um pacote, tudo
+~/dev/ros2/scripts/test.sh ftl_follower_pure_pursuit ftl_template  # vários pacotes
+~/dev/ros2/scripts/test.sh ftl_follower_pure_pursuit -k lookahead  # só os de nome com "lookahead"
 ~/dev/ros2/scripts/test.sh ftl_bringup -R test_readme # só os arquivos que casam
 ```
 

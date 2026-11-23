@@ -16,7 +16,7 @@
        ficam no ftl_gz, que depende deste pacote e nunca o contrário. -->
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
-  <exec_depend>ftl_follower</exec_depend>
+  <exec_depend>ftl_follower_pure_pursuit</exec_depend>
   <exec_depend>road_follow</exec_depend>
 
   <test_depend>ament_cmake_pytest</test_depend>

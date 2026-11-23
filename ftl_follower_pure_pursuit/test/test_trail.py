@@ -1,6 +1,6 @@
 import math
 
-from ftl_follower.trail import Trail
+from ftl_follower_pure_pursuit.trail import Trail
 import pytest
 
 

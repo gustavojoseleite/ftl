@@ -2,7 +2,7 @@
 """
 Onde este veículo está, no referencial que o comboio inteiro compartilha.
 
-    ros2 run ftl_follower pose_estimator --ros-args -r __ns:=/tractor_1
+    ros2 run ftl_follower_pure_pursuit pose_estimator --ros-args -r __ns:=/tractor_1
 
 Roda em todos os veículos do comboio, líder incluído, e publica `ftl/state`
 (`nav_msgs/Odometry`, referencial `ftl_map`): posição leste/norte do `datum`,
@@ -25,7 +25,7 @@ um volante que nunca para de tremer.
 
 import math
 
-from ftl_follower.geo import LocalFrame, yaw_from_quaternion
+from ftl_follower_pure_pursuit.geo import LocalFrame, yaw_from_quaternion
 from nav_msgs.msg import Odometry
 import rclpy
 from rclpy.executors import ExternalShutdownException

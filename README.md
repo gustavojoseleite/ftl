@@ -7,7 +7,7 @@ projeto usa. A plataforma em que ele roda (veículos, mundos, condução) vem de
 workspace.
 
 ```
-ftl_follower/     pose_estimator (todo veículo) e follower (cada seguidor)
+ftl_follower_pure_pursuit/  a B0: pose_estimator (todo veículo) e follower (cada seguidor)
 road_follow/      dirige um veículo pelos carreadores pela câmera — o motorista do líder do FTL
 ftl_bringup/      os nós do FTL e seus parâmetros, num launch só. Sem simulador.
 ├── launch/ftl.launch.py
@@ -147,11 +147,23 @@ Os veículos são dirigidos pelo ros2_control desde 2026-11-11, com tração nas
 experimento nos dois caminhos, com quatro seguidores e na volta completa de 1109 m (a pickup volta
 a 2,07 m da origem, distância média de 10,00 / 10,02 m), está no README do `vehicle_control`.
 
-Testes do rastro, das leis de controle e da geodésia: `scripts/test.sh ftl_follower`, que roda os
-16 testes de unidade, o lint e a guarda.
+Testes do rastro, das leis de controle e da geodésia: `scripts/test.sh ftl_follower_pure_pursuit`,
+que roda os testes de unidade, o lint e a guarda.
 
 Os seguidores levam GNSS e IMU, mas não câmera (`followers_camera:=false` no comboio), então o
 comboio custa uma câmera, qualquer que seja o tamanho dele.
+
+## Linha de base B0
+
+A B0 é o pacote `ftl_follower_pure_pursuit`: o seguidor da monografia, congelado (D2), com o
+estimador complementar de pose e o pure pursuit sobre o rastro do precedente. O algoritmo não
+muda; uma guarda de testes confere isso. Ela não tem câmera, UKF nem trilho comum.
+
+A velocidade do precedente vem do `ftl/state`, como se chegasse pelo rádio. A zona morta
+(`uncertainty`) é um recurso do ambiente de teste e fica desligada (0) nos experimentos.
+
+A B0 é comparada com as soluções seguintes como diz a seção 8.4 do plano: os mesmos cenários e as
+mesmas sementes, o caminho estimado de cada veículo e as tabelas pareadas.
 
 ## road_follow: dirigindo pelas bordas da estrada
 

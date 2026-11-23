@@ -3,7 +3,7 @@ Testes do README do ftl: a árvore de pacotes e a entrada para os padrões.
 
 A árvore no começo do README lista todo pacote do repositório; a seção
 "Pacotes novos" aponta para o CONTRIBUTING.md e para o pacote modelo; e os
-testes do ftl_follower saem pelo comando do workspace.
+testes do ftl_follower_pure_pursuit saem pelo comando do workspace.
 """
 
 from pathlib import Path
@@ -43,4 +43,4 @@ def test_new_packages_section_points_to_the_standards():
 
 
 def test_follower_tests_use_the_workspace_command():
-    assert 'scripts/test.sh ftl_follower' in README.read_text()
+    assert 'scripts/test.sh ftl_follower_pure_pursuit' in README.read_text()

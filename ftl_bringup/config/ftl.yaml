@@ -24,11 +24,11 @@
     gap: 10.0                   # m ao longo do caminho, de base a base (= o espaçamento do comboio)
     min_gap: 5.0                # m: para abaixo disto, não importa o que o veículo da frente faça
     k_gap: 0.4                  # (m/s) por metro de erro do espaçamento
-    v_max: 4.0                  # m/s; o plugin do trator chega no máximo a 4,2
+    v_max: 11.1                 # m/s (40 km/h): a velocidade de transporte (D19)
     accel: 1.0                  # m/s^2 de rampa na velocidade comandada
     lookahead_min: 4.0          # m, `pure pursuit` parado
     lookahead_gain: 1.0         # s: + isto vezes a velocidade
     lookahead_max: 10.0         # m
     min_radius: 3.2             # m: o círculo de giro do trator com a direção toda esterçada
-    uncertainty: 1.0            # m: incerteza da posição estimada (perfil `default`);
-                                # a covariância do estado a substituirá
+    uncertainty: 0.0            # m: zona morta, só recurso do ambiente de teste;
+                                # desligada nos experimentos

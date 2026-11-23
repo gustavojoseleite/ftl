@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'ftl_follower'
+package_name = 'ftl_follower_pure_pursuit'
 
 setup(
     name=package_name,
@@ -19,8 +19,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'pose_estimator = ftl_follower.pose_estimator:main',
-            'follower = ftl_follower.follower:main',
+            'pose_estimator = ftl_follower_pure_pursuit.pose_estimator:main',
+            'follower = ftl_follower_pure_pursuit.follower:main',
         ],
     },
 )
