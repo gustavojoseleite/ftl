@@ -9,6 +9,7 @@ workspace.
 ```
 ftl_follower_pure_pursuit/  a B0: pose_estimator (todo veículo) e follower (cada seguidor)
 road_follow/      dirige um veículo pelos carreadores pela câmera — o motorista do líder do FTL
+ftl_analysis/     a análise das campanhas: métricas por trecho e por trator, em tabelas e figura
 ftl_bringup/      os nós do FTL e seus parâmetros, num launch só. Sem simulador.
 ├── launch/ftl.launch.py
 └── config/ftl.yaml           um arquivo por experimento é o uso pretendido
@@ -354,3 +355,54 @@ execução ganha `degradation.seed` igual à semente e `gui=false`.
   - `/clock`: o tempo da simulação.
 - **Retomada**: ao rodar de novo o mesmo comando, só as sementes sem `run.yaml` com `done` rodam;
   as que terminaram em `timeout` ou `failed` repetem, e o bag anterior é apagado.
+
+## ftl_analysis: as métricas de uma campanha
+
+O comando `analyze` transforma a pasta de uma campanha nas tabelas e na figura das métricas, com a
+média e o intervalo de confiança de 95% entre as execuções.
+
+```bash
+ros2 run ftl_analysis analyze /workspace/experiments/c1 --out /workspace/experiments/c1/analysis
+```
+
+A campanha tem as execuções em `<campanha>/<rótulo>/<semente>/`, como o `ftl_experiments` as grava;
+só entram as de `run.yaml` com `reason: done`, e as outras são avisadas e puladas. A saída padrão é
+`<campanha>/analysis`. O comando `bag_info <pasta da execução>` lista os tópicos de um bag.
+
+- **Saídas**:
+  - `metrics_runs.csv`: uma linha por execução, trecho, trator e métrica (`label`, `run`, `seed`,
+    `segment`, `kind`, `vehicle`, `metric`, `value`);
+  - `metrics_summary.csv`: o resumo por `label`, `segment`, `vehicle` e `metric`, com `n`, `mean`
+    e `ci95` (a meia-largura do intervalo, pela distribuição t; vazio com uma só execução);
+  - `table_lateral.tex`: o `lateral_rmse` por rótulo, trecho e trator, como média ± intervalo;
+  - `lateral_rmse.pdf`: as barras do `lateral_rmse`, com o intervalo de confiança.
+- **Caminho de cada veículo**: o estimado, o `ftl/state`, no ponto de referência, que é a antena
+  projetada no chão (`ANTENNA`: 1,075 m à frente da base no trator e 1,545 m na pickup). A pose
+  real, `/ground_truth/<v>/pose`, só serve ao `estimation_rmse`: ela mede o erro da própria
+  estimativa e nunca entra nas outras métricas, como na seção 8.4 do plano.
+- **Trechos**: cada reta e cada curva da rota do mundo, chamados `straight_<n>` e `curve_<n>`
+  (`segments`); a volta inteira é o trecho `lap`. Cada amostra vai ao trecho pela projeção do ponto
+  de referência na rota.
+- **Partida**: as amostras até todos os tratores passarem de 90% da velocidade de cruzeiro
+  (`route.cruise_kmh`) são descartadas.
+- **Métricas por trecho e por trator**:
+  - `lateral_rmse`, `lateral_max` e `lateral_p95`: a raiz do erro quadrático médio, o máximo e o
+    percentil 95 do valor absoluto do erro lateral, a distância com sinal, em m, do ponto de
+    referência ao caminho percorrido pelo líder (positiva à esquerda); as amostras que caem antes
+    do começo ou depois do fim do caminho do líder ficam de fora;
+  - `corner_cut` (só nas curvas): o maior desvio para dentro da curva, em m, ou 0;
+  - `longitudinal_rmse`: o RMSE do espaçamento ao longo do caminho do líder, entre o precedente e
+    o trator, de base a base, menos o alvo (`gap` do `follower` no `ftl.yaml`, ou no
+    `ftl.params_file` do cenário), em m;
+  - `steer_rate_rms`: o RMS da derivada da velocidade angular comandada no `cmd_vel`, em rad/s²;
+  - `accel_rms`: o RMS da derivada da velocidade linear comandada no `cmd_vel`, em m/s²;
+  - `estimation_rmse`: a distância, em m, entre o ponto de referência estimado e o da pose real,
+    interpolada no tempo.
+- **Volta inteira** (trecho `lap`, do segundo trator em diante): `gamma_lateral` e
+  `gamma_longitudinal`, a razão entre o RMS do erro do trator e o do precedente
+  (`string_stability`); o comboio não amplifica o erro se for no máximo 1.
+- **Tempo**: o carimbo do cabeçalho da mensagem, e o de gravação sem cabeçalho; as séries do
+  `cmd_vel` usam o de gravação. Uma métrica sem o tópico que a alimenta fica fora da tabela.
+- **Comparação com a B0**: as soluções seguintes rodam com os mesmos cenários e as mesmas sementes
+  da B0, e a comparação é pareada pela semente, trecho a trecho e trator a trator (seção 8.4 do
+  plano).
