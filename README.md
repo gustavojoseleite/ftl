@@ -406,17 +406,26 @@ só entram as de `run.yaml` com `reason: done`, e as outras são avisadas e pula
 `--reasons done,timeout`. A saída padrão é
 `<campanha>/analysis`. O comando `bag_info <pasta da execução>` lista os tópicos de um bag.
 
+O comando `plot_paths <execução> --out <pdf> [--segment <trecho>]` desenha a rota ideal em preto e
+o caminho real de cada veículo, com os eixos na mesma escala; com `--segment`, um segundo painel
+mostra o trecho pedido (por exemplo, `curve_0`) com uma folga de 5 m. A rota e os caminhos vêm de
+`paths(<execução>)`.
+
 - **Saídas**:
   - `metrics_runs.csv`: uma linha por execução, trecho, trator e métrica (`label`, `run`, `seed`,
     `segment`, `kind`, `vehicle`, `metric`, `value`);
   - `metrics_summary.csv`: o resumo por `label`, `segment`, `vehicle` e `metric`, com `n`, `mean`
     e `ci95` (a meia-largura do intervalo, pela distribuição t; vazio com uma só execução);
   - `table_lateral.tex`: o `lateral_rmse` por rótulo, trecho e trator, como média ± intervalo;
-  - `lateral_rmse.pdf`: as barras do `lateral_rmse`, com o intervalo de confiança.
+  - `lateral_rmse.pdf`: as barras do `lateral_rmse`, com o intervalo de confiança;
+  - `table_route.tex` e `route_error.pdf`: o erro à rota por rótulo e veículo, na ordem da fila,
+    com o intervalo de confiança; nas retas, a média do `route_lateral_rmse` e, nas curvas, a do
+    `route_corner_cut`. Servem para mostrar o problema da B0: o caminho real e a rota ideal
+    (plano, seção 8.7).
 - **Caminho de cada veículo**: o estimado, o `ftl/state`, no ponto de referência, que é a antena
   projetada no chão (`ANTENNA`: 1,075 m à frente da base no trator e 1,545 m na pickup). A pose
-  real, `/ground_truth/<v>/pose`, só serve ao `estimation_rmse`: ela mede o erro da própria
-  estimativa e nunca entra nas outras métricas, como na seção 8.4 do plano.
+  real, `/ground_truth/<v>/pose`, serve ao `estimation_rmse` e às métricas `route_`; ela nunca
+  entra nas métricas do caminho do líder, como na seção 8.4 do plano.
 - **Trechos**: cada reta e cada curva da rota do mundo, chamados `straight_<n>` e `curve_<n>`
   (`segments`); a volta inteira é o trecho `lap`. Cada amostra vai ao trecho pela projeção do ponto
   de referência na rota.
@@ -435,6 +444,13 @@ só entram as de `run.yaml` com `reason: done`, e as outras são avisadas e pula
   - `accel_rms`: o RMS da derivada da velocidade linear comandada no `cmd_vel`, em m/s²;
   - `estimation_rmse`: a distância, em m, entre o ponto de referência estimado e o da pose real,
     interpolada no tempo.
+- **Erro à rota, pela pose real** (para o líder e para cada trator): a pose real no ponto de
+  referência é projetada na rota ideal, com os mesmos trechos e o mesmo descarte da partida:
+  - `route_lateral_mean`, `route_lateral_rmse` e `route_lateral_max`: a média com sinal (positiva
+    à esquerda), o RMS e o máximo do valor absoluto do erro à rota, em m;
+  - `route_corner_cut` (só nas curvas): o maior desvio para dentro da curva, em m, ou 0;
+  - `gamma_route` (trecho `lap`, do primeiro trator em diante): a razão entre o RMS do erro à rota
+    do trator e o do precedente, na ordem líder, T1, T2…
 - **Volta inteira** (trecho `lap`, do segundo trator em diante): `gamma_lateral` e
   `gamma_longitudinal`, a razão entre o RMS do erro do trator e o do precedente
   (`string_stability`); o comboio não amplifica o erro se for no máximo 1.

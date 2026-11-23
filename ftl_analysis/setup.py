@@ -23,6 +23,7 @@ setup(
         'console_scripts': [
             'analyze = ftl_analysis.report:main',
             'bag_info = ftl_analysis.bag:main',
+            'plot_paths = ftl_analysis.plot:main',
         ],
     },
 )
