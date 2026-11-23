@@ -187,8 +187,10 @@ envia `x`, `y`, `z` e `yaw`).
 
 ## Linha de base B0
 
-A B0 é o pacote `ftl_follower_pure_pursuit`: o seguidor da monografia, congelado (D2), com o
-estimador complementar de pose e o pure pursuit sobre o rastro do precedente. O algoritmo não
+A B0 é o pacote `ftl_follower_pure_pursuit`: o seguidor que já existia no workspace antes desta
+pesquisa, congelado (D2), com o estimador complementar de pose e o pure pursuit sobre o rastro do
+precedente. Não é a proposta da monografia, e sim o caso da Figura 10(a) dela, em que cada trator
+segue o veículo imediatamente à frente. O algoritmo não
 muda; uma guarda de testes confere isso. Ela não tem câmera, UKF nem trilho comum.
 
 A velocidade do precedente vem do `ftl/state`, como se chegasse pelo rádio. A zona morta
