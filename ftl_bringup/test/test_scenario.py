@@ -97,6 +97,13 @@ def test_convoy_arguments():
     assert all(isinstance(v, str) for v in args.values())
 
 
+def test_convoy_arguments_seed():
+    # A semente da degradação também vai para o Gazebo, que fixa o ruído do GNSS com ela.
+    args = convoy_arguments(resolve('dual_160', parse_overrides('degradation.seed=7')))
+    assert args['seed'] == '7'
+    assert convoy_arguments(resolve('dual_160', {}))['seed'] == '0'
+
+
 def test_every_key_is_documented():
     text = README.read_text()
     assert '## Cenário de experimento' in text

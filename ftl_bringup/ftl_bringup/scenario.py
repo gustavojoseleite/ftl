@@ -219,6 +219,8 @@ def convoy_arguments(config):
         'camera_mount': sensors['camera_mount'],
         'tag_family': sensors['tag_family'],
         'tag_size': sensors['tag_size'],
+        # A mesma semente da degradação fixa também o ruído dos sensores do Gazebo.
+        'seed': config['degradation']['seed'],
     }
     return {name: str(value) for name, value in args.items()}
 

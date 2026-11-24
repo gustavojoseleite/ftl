@@ -315,7 +315,7 @@ FTL e o `apply_scenario`.
 | `degradation.imu` | vazio | vazio ou perfil de imu | Perfil de degradação da IMU. |
 | `degradation.odometry` | vazio | vazio ou perfil de odometry | Perfil de degradação da odom. |
 | `degradation.camera` | vazio | vazio ou perfil de camera | Perfil de degradação da câmera. |
-| `degradation.seed` | `0` | inteiro | Semente do ruído; cada veículo soma o seu índice. |
+| `degradation.seed` | `0` | inteiro | Semente do ruído; cada veículo soma o seu índice. Vai também para o `--seed` do Gazebo, que fixa o ruído dos sensores dele (o GNSS); `0` deixa o Gazebo sortear. |
 | `actuator.enabled` | `false` | booleano | Liga o atraso do atuador no `cmd_vel_limiter`. |
 | `actuator.steering_rate` | `0.5` | rad/s, 0,05 a 2,0 | Velocidade máxima de giro da direção. |
 | `actuator.time_constant` | `0.5` | s, 0,05 a 3,0 | Constante de tempo da resposta do atuador. |
