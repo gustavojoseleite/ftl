@@ -1,0 +1,66 @@
+# Parâmetros da localização de um veículo: o UKF do robot_localization e o `gnss_odometry`.
+# "/**/<nó>" casa com o nó em qualquer namespace de veículo.
+# Os valores que não aparecem aqui ficam no padrão do robot_localization.
+
+/**/gnss_odometry:
+  ros__parameters:
+    # O `datum` é o mesmo do `pose_estimator` no `ftl_bringup/config/ftl.yaml`: o comboio inteiro
+    # usa um referencial só.
+    datum_lat: -20.9494
+    datum_lon: -48.4794
+    gnss_sigma_h: 0.02              # m, quando o fix não traz covariância (RTK fixo, D13)
+    gnss_sigma_v: 0.04              # m
+    reset_distance: 3.0             # m entre o ftl/state e o GNSS que reinicia o filtro
+    world_frame: ftl_map
+    base_frame: base_footprint
+    gnss_frame: gnss_link
+
+/**/ukf:
+  ros__parameters:
+    frequency: 20.0                 # Hz
+    two_d_mode: true
+    publish_tf: false               # o `ftl/state` é a saída; ninguém mais publica a árvore de TF
+    map_frame: ftl_map
+    odom_frame: odom
+    base_link_frame: base_footprint
+    world_frame: ftl_map
+
+    # Odometria: só a velocidade à frente e a de guinada.
+    odom0: odom
+    odom0_config: [false, false, false, false, false, false,
+                   true,  false, false, false, false, true,
+                   false, false, false]
+    odom0_queue_size: 10
+
+    # IMU: o rumo absoluto e a velocidade de guinada.
+    imu0: imu/data
+    imu0_config: [false, false, false, false, false, true,
+                  false, false, false, false, false, true,
+                  false, false, false]
+    imu0_queue_size: 10
+    imu0_remove_gravitational_acceleration: false
+
+    # Posição da base vinda do GNSS, convertida pelo `gnss_odometry`.
+    odom1: odometry/gps
+    odom1_config: [true,  true,  false, false, false, false,
+                   false, false, false, false, false, false,
+                   false, false, false]
+    odom1_queue_size: 10
+
+    # Covariância de processo (diagonal, 15x15). Sem GNSS a posição cresce por ela.
+    process_noise_covariance: [
+      0.05, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+      0.0,  0.05, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+      0.0,  0.0,  0.06, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+      0.0,  0.0,  0.0,  0.03, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+      0.0,  0.0,  0.0,  0.0,  0.03, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+      0.0,  0.0,  0.0,  0.0,  0.0,  0.06, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+      0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.025, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+      0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.025, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+      0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.04, 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,
+      0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.01, 0.0,  0.0,  0.0,  0.0,  0.0,
+      0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.01, 0.0,  0.0,  0.0,  0.0,
+      0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.02, 0.0,  0.0,  0.0,
+      0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.01, 0.0,  0.0,
+      0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.01, 0.0,
+      0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.015]

@@ -17,6 +17,7 @@ ftl_experiments/  o executor de experimentos: roda um cenário com várias semen
 ftl_gz/           cenários de teste do FTL no Gazebo: mundo, líder, seguidores, onde começam
 ├── launch/sim.launch.py      só o cenário (mundo + comboio)
 └── launch/ftl_sim.launch.py  o cenário e os nós do FTL, num comando
+ftl_localization/ o UKF por veículo (robot_localization): publica o ftl/state, com covariância
 ftl_msgs/         as mensagens que ligam os módulos da solução
 ftl_route_driver/ o motorista roteirizado do líder: percorre a rota do mundo sozinho
 ftl_template/     o pacote modelo: copie-o para começar um pacote novo
@@ -271,6 +272,63 @@ Saíram também.
 O que sobra é a própria estrada, e ela é o alvo melhor. Nada num carreador aqui é desenhado que uma
 estrada patrolada não teria.
 
+## ftl_localization: o UKF por veículo
+
+Cada veículo pode estimar a própria pose com o UKF do `robot_localization` em vez do
+`pose_estimator` da B0. O resultado é o mesmo `ftl/state` de hoje (`nav_msgs/Odometry`, referencial
+`ftl_map`, filho `base_footprint`), agora com a covariância da pose preenchida.
+
+Este UKF estima só a pose do próprio veículo, com GNSS, IMU e odometria. Ele ainda não usa a
+câmera nem a tag; a fusão da proposta com a tag do precedente é a F5.
+
+- **O que o UKF funde e de onde**: a velocidade à frente e a de guinada da odometria (`odom`), o
+  rumo e a velocidade de guinada da IMU (`imu/data`) e a posição do GNSS (`gnss/fix`), que o nó
+  `gnss_odometry` converte na posição da base em `odometry/gps`. Roda em 2D, a 20 Hz, e não
+  publica TF.
+- **A conversão do GNSS**: o `gnss_odometry` usa a mesma conversão do `pose_estimator` (metros
+  leste/norte a partir do `datum`, num plano tangente, como o Gazebo gera o fix) e desconta a
+  antena pelo TF `base_footprint -> gnss_link`, girado pelo rumo da IMU. Ele substitui o
+  `navsat_transform` do `robot_localization`: pela UTM, o fix ficava 0,18 m deslocado a 205 m do
+  `datum`, e o plano tangente dele não punha a origem no `datum`. Quando o fix não traz
+  covariância (o do Gazebo não traz), usa a do RTK fixo, σ de 2 cm; com covariância zero o filtro
+  ia a NaN. Fixes sem solução ou com latitude e longitude nulas são descartados.
+- **A partida**: o UKF nasce na origem do `ftl_map`, longe do veículo. Enquanto o `ftl/state`
+  estiver a mais de 3 m do GNSS (`reset_distance`), o `gnss_odometry` manda cada fix também para
+  o `set_pose`, com o rumo da IMU, e o filtro recomeça ali.
+- **O `datum` comum**: o `gnss_odometry` usa o mesmo `datum` do `pose_estimator`
+  (`ftl_bringup/config/ftl.yaml`), então o comboio inteiro fica num referencial só. Os parâmetros
+  estão em `ftl_localization/config/localization.yaml`.
+- **A escolha**: o argumento `localization:=ukf` do `ftl.launch.py` (padrão `pose_estimator`) ou a
+  chave `ftl.localization=ukf` do cenário, que o `experiment.launch.py` repassa ao launch.
+- **Sem GNSS**: a covariância da posição só cresce, pela covariância de processo; quando o GNSS
+  volta, ela cai.
+
+```bash
+ros2 launch ftl_bringup ftl.launch.py localization:=ukf followers:=2
+ros2 run ftl_experiments run --campaign loc --set "ftl.localization=ukf" --seeds 1
+```
+
+### Comparação com a B0
+
+A B0 e o UKF rodam no mesmo conjunto de sensores de campo: perfil `nominal` (RTK fixo), IMU
+`mems` e odometria `field`, no caso `quick` (`citrus_farm_90`, 10,8 km/h, 4 tratores, 120 s
+simulados), semente 1. O RMSE de estimação de cada trator nas retas, medido no teste
+`ftl_experiments/test/test_sim_localization.py`:
+
+| Trator | B0 (`pose_estimator`) | UKF |
+|---|---|---|
+| `tractor_1` | 1,26 m | 0,06 m |
+| `tractor_2` | 0,94 m | 0,08 m |
+| `tractor_3` | 0,90 m | 0,06 m |
+| `tractor_4` | 0,91 m | 0,10 m |
+| média | 1,00 m | 0,08 m |
+
+Medido em 24/11/2026. A meta do plano é 5 cm; o UKF fica perto dela e dentro do limite do teste
+(0,10 m). O erro que sobra é um atraso ao longo da trajetória de 2 a 5 cm, do GNSS a 1 Hz. O
+`pose_estimator` da B0 erra cerca de um metro com a IMU `mems` e a odometria `field`, e ainda
+carrega 0,2–0,3 m do braço da antena girado só pelo rumo no relevo inclinado; a B0 fica congelada
+como está (D2).
+
 ## Cenário de experimento
 
 Um experimento sobe com um comando e um cenário. A configuração resolvida é gravada e publicada.
@@ -322,6 +380,7 @@ FTL e o `apply_scenario`.
 | `route.enabled` | `false` | booleano | O líder percorre a rota do mundo; sem rota, recusa. |
 | `route.cruise_kmh` | `10.8` | km/h, 1 a 40 | Velocidade de cruzeiro do líder nas retas. |
 | `route.a_lat` | `1.0` | m/s², 0,2 a 3 | Aceleração lateral máxima; limita a velocidade. |
+| `ftl.localization` | `pose_estimator` | `pose_estimator` ou `ukf` | Localização de cada veículo: a B0 ou o UKF. |
 | `ftl.params_file` | vazio | caminho de um arquivo | Parâmetros dos nós do FTL; vazio: o padrão. |
 
 Os perfis de degradação vêm de `agri_sensor_degradation`. Um booleano não vale onde se espera um

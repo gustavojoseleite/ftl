@@ -88,6 +88,8 @@ SCHEMA = [
          effect='Velocidade de cruzeiro do líder nas retas.'),
     _key('route.a_lat', 1.0, 'float', 0.2, 3.0, unit='m/s²',
          effect='Aceleração lateral máxima nas curvas; limita a velocidade nelas.'),
+    _key('ftl.localization', 'pose_estimator', choices=['pose_estimator', 'ukf'],
+         effect='Localização de cada veículo: o `pose_estimator` da B0 ou o UKF.'),
     _key('ftl.params_file', '',
          effect='Parâmetros dos nós do FTL; vazio usa o `ftl.yaml` padrão.'),
 ]
@@ -223,6 +225,16 @@ def convoy_arguments(config):
         'seed': config['degradation']['seed'],
     }
     return {name: str(value) for name, value in args.items()}
+
+
+def ftl_arguments(config):
+    """Os argumentos de texto do `ftl.launch.py`."""
+    args = {'use_sim_time': 'true', 'leader': config['convoy']['leader'],
+            'followers': str(config['convoy']['followers']),
+            'localization': config['ftl']['localization']}
+    if config['ftl']['params_file']:
+        args['params_file'] = config['ftl']['params_file']
+    return args
 
 
 def driver_parameters(config):

@@ -35,13 +35,9 @@ def launch_setup(context, *args, **kwargs):
         return IncludeLaunchDescription(PythonLaunchDescriptionSource(str(source)),
                                         launch_arguments=arguments.items())
 
-    ftl_arguments = {'use_sim_time': 'true', 'leader': config['convoy']['leader'],
-                     'followers': str(config['convoy']['followers'])}
-    if config['ftl']['params_file']:
-        ftl_arguments['params_file'] = config['ftl']['params_file']
     actions = [
         include('agri_gz_bringup', 'convoy.launch.py', scenario.convoy_arguments(config)),
-        include('ftl_bringup', 'ftl.launch.py', ftl_arguments),
+        include('ftl_bringup', 'ftl.launch.py', scenario.ftl_arguments(config)),
         Node(package='ftl_bringup', executable='apply_scenario', name='apply_scenario',
              arguments=[str(config_path)], output='screen'),
     ]

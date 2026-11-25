@@ -3,10 +3,13 @@
     ros2 launch ftl_bringup ftl.launch.py                       # máquinas reais
     ros2 launch ftl_bringup ftl.launch.py use_sim_time:=true    # contra o Gazebo
     ros2 launch ftl_bringup ftl.launch.py followers:=4 params_file:=/path/exp.yaml
+    ros2 launch ftl_bringup ftl.launch.py localization:=ukf     # UKF no lugar do pose_estimator
 
 O que roda:
 
     todo veículo       pose_estimator   GNSS + IMU + odometria -> ftl/state, referencial comum
+                       (com `localization:=ukf`: o UKF e o gnss_odometry do ftl_localization,
+                       que publicam o mesmo ftl/state, com covariância)
     o líder            road_follow      dirige pelos carreadores usando a câmera
     cada seguidor      follower         segue o caminho do veículo da frente a `gap`
 
@@ -23,8 +26,12 @@ TF: cada veículo mantém sua árvore no próprio namespace (ver o módulo vehic
 agri_gz_bringup), então um nó que lê TF recebe os mesmos dois remaps.
 """
 
+from pathlib import Path
+
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -44,10 +51,21 @@ def launch_setup(context, *args, **kwargs):
         Node(package="road_follow", executable="road_follow", name="road_follow",
              namespace=leader, parameters=common, remappings=TF_REMAPS, output="screen"),
     ]
+    localization = arg("localization")
+    if localization not in ("pose_estimator", "ukf"):
+        raise ValueError(f"localization: {localization!r} is not pose_estimator or ukf")
     for ns in [leader, *followers]:
-        nodes.append(Node(package="ftl_follower_pure_pursuit", executable="pose_estimator",
-                          name="pose_estimator", namespace=ns, parameters=common,
-                          remappings=TF_REMAPS, output="screen"))
+        if localization == "ukf":
+            source = Path(get_package_share_directory("ftl_localization")) / "launch" / \
+                "localization.launch.py"
+            nodes.append(IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(str(source)),
+                launch_arguments={"namespace": ns,
+                                  "use_sim_time": arg("use_sim_time").lower()}.items()))
+        else:
+            nodes.append(Node(package="ftl_follower_pure_pursuit", executable="pose_estimator",
+                              name="pose_estimator", namespace=ns, parameters=common,
+                              remappings=TF_REMAPS, output="screen"))
     for ahead, ns in zip([leader, *followers], followers):
         nodes.append(Node(package="ftl_follower_pure_pursuit", executable="follower",
                           name="follower", namespace=ns,
@@ -70,5 +88,7 @@ def generate_launch_description():
             default_value=PathJoinSubstitution([FindPackageShare("ftl_bringup"), "config", "ftl.yaml"]),
             description="Parameters of the FTL nodes for this experiment.",
         ),
+        DeclareLaunchArgument("localization", default_value="pose_estimator",
+                              description="pose_estimator (B0) or ukf (ftl_localization)."),
         OpaqueFunction(function=launch_setup),
     ])

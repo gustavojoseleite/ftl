@@ -16,7 +16,7 @@ if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
   foreach(name test_decisions test_contributing test_readme test_ci_workflow test_ci_docs test_b0
                test_sim_launch test_scenario test_scenario_route
-               test_driver_parameters)
+               test_driver_parameters test_localization_choice)
     ament_add_pytest_test(${name} test/${name}.py)
   endforeach()
   ament_add_pytest_test(test_sim_experiment test/test_sim_experiment.py TIMEOUT 900)
