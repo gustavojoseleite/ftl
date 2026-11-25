@@ -68,3 +68,16 @@ def test_command_before_the_trail_starts():
     assert gap == pytest.approx(12.5)
     assert v > 0.0
     assert math.isfinite(v)
+
+
+def test_command_does_not_wind_up_while_the_vehicle_is_stuck():
+    # Parado (controlador de tração ainda fora) e muito atrás: o comando não passa de
+    # max_lead acima da velocidade medida, por mais ciclos que passem.
+    path = _line(200)
+    v = 0.0
+    for _ in range(400):
+        v, *_ = command(path, (0.0, 0.0, 0.0, 0.0), (90.0, 0.0, 0.0, 3.0), {}, PARAMS, v, 0.05)
+    assert v == pytest.approx(PARAMS['max_lead'])
+    # Andando, o comando sobe na rampa normal a partir do anterior.
+    v2, *_ = command(path, (0.0, 0.0, 0.0, 3.0), (90.0, 0.0, 0.0, 3.0), {}, PARAMS, 3.0, 0.05)
+    assert v2 == pytest.approx(3.0 + PARAMS['accel'] * 0.05)
