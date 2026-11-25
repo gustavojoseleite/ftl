@@ -4,7 +4,8 @@ Sobe a localização de um veículo: o `gnss_odometry` e o UKF no namespace dele
     ros2 launch ftl_localization localization.launch.py namespace:=pickup use_sim_time:=true
 
 O `gnss_odometry` converte o `gnss/fix` na posição da base em `odometry/gps` (e reinicia o filtro
-pelo `set_pose` na partida); o `ukf` funde isso com a odometria e a IMU e publica o `ftl/state`.
+pelo `set_pose` na partida); o `ukf` funde isso com a odometria e a IMU em `ftl/state_filter`, que
+o `gnss_odometry` repassa ao `ftl/state` depois que o filtro chega ao GNSS.
 """
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
@@ -27,5 +28,5 @@ def generate_launch_description():
              remappings=tf),
         Node(package='robot_localization', executable='ukf_node', name='ukf',
              namespace=LaunchConfiguration('namespace'), parameters=common, output='screen',
-             remappings=[*tf, ('odometry/filtered', 'ftl/state')]),
+             remappings=[*tf, ('odometry/filtered', 'ftl/state_filter')]),
     ])

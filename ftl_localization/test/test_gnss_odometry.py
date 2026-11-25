@@ -1,7 +1,8 @@
-"""A conversão do fix GNSS do `gnss_odometry`: antena, covariância e fixes inválidos (F3.1)."""
+"""A conversão do fix GNSS do `gnss_odometry` e o filtro de saltos do estado (F3.1)."""
 import math
 
-from ftl_localization.gnss_odometry import base_position, horizontal_variances, valid_fix
+from ftl_localization.gnss_odometry import (base_position, horizontal_variances, StepGate,
+                                            valid_fix)
 import pytest
 from sensor_msgs.msg import NavSatFix, NavSatStatus
 
@@ -58,3 +59,28 @@ def test_covariance_from_the_fix_or_the_rtk_default():
     # Conhecida mas zerada, como a do Gazebo: vale a do RTK.
     fix.position_covariance = [0.0] * 9
     assert horizontal_variances(fix, 0.02, 0.04) == pytest.approx((4e-4, 4e-4, 1.6e-3))
+
+
+def _drive(gate, samples):
+    return [gate.accept(t, x, y) for t, x, y in samples]
+
+
+def test_step_gate_drops_a_single_jump():
+    # O arranque do líder no teste do E1: 3 m/s em y e uma amostra única 19 m atrás.
+    samples = [(5.0 + 0.05 * k, -205.0, 0.15 * k) for k in range(6)]
+    samples[3] = (samples[3][0], -205.0, -19.3)
+    assert _drive(StepGate(), samples) == [True, True, True, False, True, True]
+
+
+def test_step_gate_accepts_a_jump_that_persists():
+    gate = StepGate(max_speed=20.0, max_drops=3)
+    samples = [(0.0, 0.0, 0.0)] + [(0.05 * k, 50.0, 0.0) for k in range(1, 6)]
+    assert _drive(gate, samples) == [True, False, False, False, True, True]
+
+
+def test_step_gate_clear_lets_the_next_jump_through():
+    gate = StepGate()
+    assert gate.accept(0.0, 0.0, 0.0)
+    gate.clear()
+    assert gate.accept(0.05, 30.0, 0.0)
+    assert not gate.accept(0.10, float('nan'), 0.0)

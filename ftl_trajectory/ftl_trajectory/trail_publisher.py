@@ -10,8 +10,12 @@ estado do líder) a ``rate`` Hz. O trilho publicado são os pontos corrigidos fi
 pontos amostrados que ainda não têm correção final, na ponta junto ao líder. Os pontos finais
 nunca mudam, então o comprimento de arco de um ponto do trilho é o mesmo em toda mensagem.
 
+Um salto do estado do líder maior que ``max_jump`` (10 m) entre duas mensagens não é movimento,
+é a localização que acabou de se acertar: o trilho recomeça a partir dali.
+
 Parâmetros: ``leader`` (namespace do líder, obrigatório), ``d_base`` (1,0 m), ``d_min``
-(0,25 m), ``dpsi_max_deg`` (3,0°), ``w_ma`` (5 pontos), ``w_cc`` (3 pontos) e ``rate`` (5 Hz).
+(0,25 m), ``dpsi_max_deg`` (3,0°), ``w_ma`` (5 pontos), ``w_cc`` (3 pontos), ``max_jump``
+(10 m) e ``rate`` (5 Hz).
 """
 
 import math
@@ -42,9 +46,14 @@ class TrailPublisher(Node):
         leader = param('leader', '')
         if not leader:
             raise SystemExit("trail_publisher: o parâmetro 'leader' é obrigatório")
-        self.sampler = AdaptiveSampler(param('d_base', 1.0), param('d_min', 0.25),
-                                       math.radians(param('dpsi_max_deg', 3.0)))
-        self.filter = Ccma(param('w_ma', 5), param('w_cc', 3))
+        sampling = (param('d_base', 1.0), param('d_min', 0.25),
+                    math.radians(param('dpsi_max_deg', 3.0)))
+        windows = (param('w_ma', 5), param('w_cc', 3))
+        self.make_sampler = lambda: AdaptiveSampler(*sampling)  # noqa: E731
+        self.make_filter = lambda: Ccma(*windows)  # noqa: E731
+        self.sampler, self.filter = self.make_sampler(), self.make_filter()
+        self.max_jump = param('max_jump', 10.0)
+        self.last = None
         self.frame = None
         self.publisher = self.create_publisher(Path, 'ftl/trail', 10)
         self.create_subscription(Odometry, f"{leader.rstrip('/')}/ftl/state", self._on_leader,
@@ -57,6 +66,12 @@ class TrailPublisher(Node):
         if not all(math.isfinite(v) for v in (pose.position.x, pose.position.y)):
             return
         self.frame = msg.header.frame_id
+        here = (pose.position.x, pose.position.y)
+        if self.last is not None and math.dist(self.last, here) > self.max_jump:
+            self.get_logger().warn(f'leader jumped {math.dist(self.last, here):.1f} m, '
+                                   'restarting the trail')
+            self.sampler, self.filter = self.make_sampler(), self.make_filter()
+        self.last = here
         if self.sampler.offer(pose.position.x, pose.position.y, _yaw(pose.orientation)):
             self.filter.add(pose.position.x, pose.position.y)
 

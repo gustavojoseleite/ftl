@@ -324,7 +324,13 @@ câmera nem a tag; a fusão da proposta com a tag do precedente é a F5.
   ia a NaN. Fixes sem solução ou com latitude e longitude nulas são descartados.
 - **A partida**: o UKF nasce na origem do `ftl_map`, longe do veículo. Enquanto o `ftl/state`
   estiver a mais de 3 m do GNSS (`reset_distance`), o `gnss_odometry` manda cada fix também para
-  o `set_pose`, com o rumo da IMU, e o filtro recomeça ali.
+  o `set_pose`, com o rumo da IMU, e o filtro recomeça ali. A saída do UKF sai em
+  `ftl/state_filter`, e o `gnss_odometry` só a repassa ao `ftl/state` depois disso: antes, o estado
+  na origem do mapa fazia o trilho único começar lá.
+- **Os saltos**: uma amostra do UKF que pede mais de 20 m/s desde a última repassada
+  (`max_speed`) não vai para o `ftl/state`. No arranque do líder, de 0 a 3 m/s num passo, o UKF
+  soltou uma amostra única 19 m atrás, e o trilho recomeçava por ela. Um salto que dura
+  `max_drops` (10) amostras seguidas é aceito, e um `set_pose` libera o salto seguinte.
 - **O `datum` comum**: o `gnss_odometry` usa o mesmo `datum` do `pose_estimator`
   (`ftl_bringup/config/ftl.yaml`), então o comboio inteiro fica num referencial só. Os parâmetros
   estão em `ftl_localization/config/localization.yaml`.
