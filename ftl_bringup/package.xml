@@ -19,6 +19,7 @@
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>ftl_follower_pure_pursuit</exec_depend>
   <exec_depend>ftl_localization</exec_depend>
+  <exec_depend>ftl_trajectory</exec_depend>
   <exec_depend>road_follow</exec_depend>
   <exec_depend>ftl_route_driver</exec_depend>
   <exec_depend>agri_sensor_degradation</exec_depend>

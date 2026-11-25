@@ -21,6 +21,7 @@ ftl_localization/ o UKF por veículo (robot_localization): publica o ftl/state, 
 ftl_msgs/         as mensagens que ligam os módulos da solução
 ftl_route_driver/ o motorista roteirizado do líder: percorre a rota do mundo sozinho
 ftl_template/     o pacote modelo: copie-o para começar um pacote novo
+ftl_trajectory/   o trilho único: amostragem adaptativa, CCMA, publicador e seguidor do trilho
 ```
 
 ## Pacotes novos
@@ -200,6 +201,35 @@ A velocidade do precedente vem do `ftl/state`, como se chegasse pelo rádio. A z
 A B0 é comparada com as soluções seguintes como diz a seção 8.4 do plano: os mesmos cenários e as
 mesmas sementes, o caminho estimado de cada veículo e as tabelas pareadas.
 
+## ftl_trajectory: o trilho único do comboio
+
+O gerenciador de trajetória da monografia (seção 4.3), na forma da proposta inicial do artigo
+(plano, seção 8.7, F6.1). O primeiro trator é quem percebe o líder: o `trail_publisher`, no
+namespace dele, lê o `ftl/state` do líder, monta o vetor de *waypoints* e o publica suavizado uma
+vez só (D9) em `ftl/trail` (`nav_msgs/Path`). Todos os tratores rodam o `trail_follower`, que
+esterça pelo trilho e mede a distância pelo veículo da frente.
+
+- **Amostragem espacial adaptativa** (`sampling.py`). Um ponto entra quando o líder andou `d_base`
+  (1,0 m) desde o último, ou quando o rumo mudou `dpsi_max_deg` (3,0°) e ele andou `d_min`
+  (0,25 m). Numa curva de raio `R`, o espaçamento é `max(d_min, min(d_base, R · dpsi_max))`: a
+  densidade cresce com a curvatura, de 1 ponto/m nas retas a 4 pontos/m nas curvas fechadas.
+  Parado, o vetor não cresce.
+- **CCMA** (`ccma.py`), a Eq. 2.12 da monografia (Steinecker e Wuensche, 2023): média móvel
+  gaussiana (`w_ma`, 5 pontos de cada lado) e a correção de curvatura que devolve cada ponto ao
+  raio original, com uma segunda média sobre as correções (`w_cc`, 3 pontos). É incremental: um
+  ponto corrigido fica final quando chegaram os `w_ma + w_cc + 1` pontos seguintes, e nunca mais
+  muda. O trilho publicado são os pontos finais mais os amostrados que ainda esperam a correção,
+  na ponta junto ao líder.
+- **Seguidor** (`trail_follower.py`). O mesmo *pure pursuit* e a mesma lei de velocidade da B0,
+  com os mesmos parâmetros (`/**/follower` do `ftl.yaml`). O alvo do *pure pursuit* é o ponto do
+  trilho a uma distância de visada adiante; o espaçamento é a diferença entre os comprimentos de
+  arco do veículo da frente e deste, projetados no trilho. Antes do começo e depois do fim do
+  trilho, a projeção segue o trecho da ponta. Publica `cmd_vel`, `ftl/gap` e `ftl/cross_track`,
+  como a B0.
+- **A escolha**: o argumento `follower:=trail` do `ftl.launch.py` (padrão `pure_pursuit`, a B0)
+  ou a chave `ftl.follower=trail` do cenário. O E1 do artigo é `ftl.localization=ukf
+  ftl.follower=trail`.
+
 ## road_follow: dirigindo pelas bordas da estrada
 
 ```bash
@@ -294,7 +324,13 @@ câmera nem a tag; a fusão da proposta com a tag do precedente é a F5.
   ia a NaN. Fixes sem solução ou com latitude e longitude nulas são descartados.
 - **A partida**: o UKF nasce na origem do `ftl_map`, longe do veículo. Enquanto o `ftl/state`
   estiver a mais de 3 m do GNSS (`reset_distance`), o `gnss_odometry` manda cada fix também para
-  o `set_pose`, com o rumo da IMU, e o filtro recomeça ali.
+  o `set_pose`, com o rumo da IMU, e o filtro recomeça ali. A saída do UKF sai em
+  `ftl/state_filter`, e o `gnss_odometry` só a repassa ao `ftl/state` depois disso: antes, o estado
+  na origem do mapa fazia o trilho único começar lá.
+- **Os saltos**: uma amostra do UKF que pede mais de 20 m/s desde a última repassada
+  (`max_speed`) não vai para o `ftl/state`. No arranque do líder, de 0 a 3 m/s num passo, o UKF
+  soltou uma amostra única 19 m atrás, e o trilho recomeçava por ela. Um salto que dura
+  `max_drops` (10) amostras seguidas é aceito, e um `set_pose` libera o salto seguinte.
 - **O `datum` comum**: o `gnss_odometry` usa o mesmo `datum` do `pose_estimator`
   (`ftl_bringup/config/ftl.yaml`), então o comboio inteiro fica num referencial só. Os parâmetros
   estão em `ftl_localization/config/localization.yaml`.
@@ -381,6 +417,7 @@ FTL e o `apply_scenario`.
 | `route.cruise_kmh` | `10.8` | km/h, 1 a 40 | Velocidade de cruzeiro do líder nas retas. |
 | `route.a_lat` | `1.0` | m/s², 0,2 a 3 | Aceleração lateral máxima; limita a velocidade. |
 | `ftl.localization` | `pose_estimator` | `pose_estimator` ou `ukf` | Localização de cada veículo: a B0 ou o UKF. |
+| `ftl.follower` | `pure_pursuit` | `pure_pursuit` ou `trail` | Seguidor: o da B0 ou o do trilho único. |
 | `ftl.params_file` | vazio | caminho de um arquivo | Parâmetros dos nós do FTL; vazio: o padrão. |
 
 Os perfis de degradação vêm de `agri_sensor_degradation`. Um booleano não vale onde se espera um

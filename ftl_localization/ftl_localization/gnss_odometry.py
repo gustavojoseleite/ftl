@@ -2,6 +2,7 @@
 Converte o fix GNSS em posição da base no referencial comum, para o UKF.
 
     gnss/fix + imu/data + TF base_footprint -> gnss_link  ->  odometry/gps  (+ set_pose)
+    ftl/state_filter (saída do UKF)                       ->  ftl/state, depois da partida
 
 Faz o papel do ``navsat_transform`` do ``robot_localization`` com a mesma conversão do
 ``pose_estimator`` da B0 (``ftl_follower_pure_pursuit.geo.LocalFrame``): metros leste/norte a
@@ -18,9 +19,16 @@ partir do ``datum`` do comboio, num plano tangente, como o Gazebo gera o fix. O
   uma medida de covariância zero leva o filtro a NaN.
 - **Fixes inválidos** (sem solução, NaN ou latitude e longitude nulas, como o primeiro do
   simulador) são descartados.
-- **Partida.** O UKF nasce na origem do ``ftl_map``, longe do veículo. Enquanto o ``ftl/state``
-  estiver a mais de ``reset_distance`` da posição do GNSS, cada fix válido também vai para
-  ``set_pose``, com o rumo da IMU, e o filtro recomeça ali.
+- **Partida.** O UKF nasce na origem do ``ftl_map``, longe do veículo. Enquanto a saída dele
+  (``ftl/state_filter``) estiver a mais de ``reset_distance`` da posição do GNSS, cada fix válido
+  também vai para ``set_pose``, com o rumo da IMU, e o filtro recomeça ali.
+- **Estado publicado.** O nó repassa a saída do UKF para ``ftl/state`` só depois que ela chegou
+  perto do GNSS pela primeira vez. Antes disso, o estado na origem do mapa fazia o trilho começar
+  lá e os seguidores andarem para lugar nenhum.
+- **Saltos.** Uma amostra do UKF que exige mais de ``max_speed`` (20 m/s) desde a última repassada
+  é descartada (``StepGate``). No arranque do líder, de 0 a 3 m/s num passo, o UKF soltou uma
+  amostra única 19 m atrás, e o trilho recomeçava por ela. Se o salto persistir por ``max_drops``
+  (10) amostras seguidas, ele é aceito; um ``set_pose`` também libera o salto seguinte.
 """
 
 import math
@@ -85,6 +93,44 @@ def horizontal_variances(msg, sigma_h, sigma_v):
     return sigma_h ** 2, sigma_h ** 2, sigma_v ** 2
 
 
+class StepGate:
+    """Descarta amostras isoladas do estado que pedem uma velocidade impossível."""
+
+    def __init__(self, max_speed=20.0, max_drops=10):
+        """
+        Guarda os limites.
+
+        Args:
+            max_speed: Velocidade, em m/s, acima da qual um passo é um salto.
+            max_drops: Quantas amostras seguidas podem ser descartadas antes de aceitar o salto.
+        """
+        self.max_speed, self.max_drops = max_speed, max_drops
+        self.clear()
+
+    def clear(self):
+        """Esquece a última amostra: a próxima é aceita como vier."""
+        self.last = None
+        self.drops = 0
+
+    def accept(self, t, x, y):
+        """
+        Diz se a amostra ``(x, y)`` no instante ``t``, em s, deve ser repassada.
+
+        Returns:
+            ``False`` para um salto isolado; ``True`` nos outros casos.
+        """
+        if not (math.isfinite(x) and math.isfinite(y)):
+            return False
+        if self.last is not None and self.drops < self.max_drops:
+            lt, lx, ly = self.last
+            step = math.hypot(x - lx, y - ly)
+            if step > self.max_speed * max(t - lt, 0.05):
+                self.drops += 1
+                return False
+        self.last, self.drops = (t, x, y), 0
+        return True
+
+
 class GnssOdometry(Node):
     """Publica a posição da base vinda do GNSS e reinicia o UKF na partida."""
 
@@ -99,19 +145,22 @@ class GnssOdometry(Node):
         self.sigma_h = param('gnss_sigma_h', 0.02)
         self.sigma_v = param('gnss_sigma_v', 0.04)
         self.reset_distance = param('reset_distance', 3.0)
+        self.gate = StepGate(param('max_speed', 20.0), param('max_drops', 10))
         self.world = param('world_frame', 'ftl_map')
         self.base = param('base_frame', 'base_footprint')
         self.gnss = param('gnss_frame', 'gnss_link')
         self.yaw = None
         self.attitude = None
         self.state = None
+        self.ready = False
         self.lever = None
         self.buffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.buffer, self)
         self.odometry = self.create_publisher(Odometry, 'odometry/gps', 10)
         self.reset = self.create_publisher(PoseWithCovarianceStamped, 'set_pose', 10)
+        self.output = self.create_publisher(Odometry, 'ftl/state', 20)
         self.create_subscription(Imu, 'imu/data', self._on_imu, 20)
-        self.create_subscription(Odometry, 'ftl/state', self._on_state, 20)
+        self.create_subscription(Odometry, 'ftl/state_filter', self._on_state, 20)
         self.create_subscription(NavSatFix, 'gnss/fix', self._on_fix, 10)
         self.create_timer(0.5, self._lookup_lever)
 
@@ -132,7 +181,13 @@ class GnssOdometry(Node):
 
     def _on_state(self, msg):
         p = msg.pose.pose.position
-        self.state = (p.x, p.y)
+        t = Time.from_msg(msg.header.stamp).nanoseconds * 1e-9
+        if not self.ready:
+            self.state = (p.x, p.y)
+            return
+        if self.gate.accept(t, p.x, p.y):
+            self.state = (p.x, p.y)
+            self.output.publish(msg)
 
     def _on_fix(self, msg):
         if not valid_fix(msg) or self.yaw is None or self.lever is None:
@@ -154,6 +209,9 @@ class GnssOdometry(Node):
         self.odometry.publish(out)
         if self._far(x, y):
             self._reset(msg, x, y, var_e, var_n)
+        elif not self.ready:
+            self.ready = True
+            self.get_logger().info('filter on the GNSS, publishing ftl/state')
 
     def _far(self, x, y):
         if self.state is None or not all(math.isfinite(v) for v in self.state):
@@ -172,6 +230,7 @@ class GnssOdometry(Node):
         cov[21], cov[28], cov[35] = 1e-4, 1e-4, 1e-3
         pose.pose.covariance = cov
         self.reset.publish(pose)
+        self.gate.clear()
         self.get_logger().info(f'filter reset to ({x:.2f}, {y:.2f}) m')
 
 

@@ -11,6 +11,8 @@
     gnss_sigma_h: 0.02              # m, quando o fix não traz covariância (RTK fixo, D13)
     gnss_sigma_v: 0.04              # m
     reset_distance: 3.0             # m entre o ftl/state e o GNSS que reinicia o filtro
+    max_speed: 20.0                 # m/s; um passo mais rápido no ftl/state é salto
+    max_drops: 10                   # amostras seguidas descartadas antes de aceitar o salto
     world_frame: ftl_map
     base_frame: base_footprint
     gnss_frame: gnss_link
