@@ -90,6 +90,8 @@ SCHEMA = [
          effect='Aceleração lateral máxima nas curvas; limita a velocidade nelas.'),
     _key('ftl.localization', 'pose_estimator', choices=['pose_estimator', 'ukf'],
          effect='Localização de cada veículo: o `pose_estimator` da B0 ou o UKF.'),
+    _key('ftl.follower', 'pure_pursuit', choices=['pure_pursuit', 'trail'],
+         effect='Seguidor: o da B0, no rastro do veículo da frente, ou o do trilho único.'),
     _key('ftl.params_file', '',
          effect='Parâmetros dos nós do FTL; vazio usa o `ftl.yaml` padrão.'),
 ]
@@ -231,7 +233,8 @@ def ftl_arguments(config):
     """Os argumentos de texto do `ftl.launch.py`."""
     args = {'use_sim_time': 'true', 'leader': config['convoy']['leader'],
             'followers': str(config['convoy']['followers']),
-            'localization': config['ftl']['localization']}
+            'localization': config['ftl']['localization'],
+            'follower': config['ftl']['follower']}
     if config['ftl']['params_file']:
         args['params_file'] = config['ftl']['params_file']
     return args

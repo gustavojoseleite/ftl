@@ -4,6 +4,7 @@
     ros2 launch ftl_bringup ftl.launch.py use_sim_time:=true    # contra o Gazebo
     ros2 launch ftl_bringup ftl.launch.py followers:=4 params_file:=/path/exp.yaml
     ros2 launch ftl_bringup ftl.launch.py localization:=ukf     # UKF no lugar do pose_estimator
+    ros2 launch ftl_bringup ftl.launch.py follower:=trail       # trilho único do ftl_trajectory
 
 O que roda:
 
@@ -12,6 +13,8 @@ O que roda:
                        que publicam o mesmo ftl/state, com covariância)
     o líder            road_follow      dirige pelos carreadores usando a câmera
     cada seguidor      follower         segue o caminho do veículo da frente a `gap`
+                       (com `follower:=trail`: o trail_follower do ftl_trajectory segue o
+                       trilho único que o trail_publisher do primeiro trator publica)
 
 A fila é líder, <prefixo>_1, <prefixo>_2, ... e cada seguidor segue o que vai à
 sua frente: tractor_1 segue a pickup, tractor_2 segue tractor_1. Esses nomes são
@@ -66,10 +69,25 @@ def launch_setup(context, *args, **kwargs):
             nodes.append(Node(package="ftl_follower_pure_pursuit", executable="pose_estimator",
                               name="pose_estimator", namespace=ns, parameters=common,
                               remappings=TF_REMAPS, output="screen"))
+    follower = arg("follower")
+    if follower not in ("pure_pursuit", "trail"):
+        raise ValueError(f"follower: {follower!r} is not pure_pursuit or trail")
+    if follower == "trail" and followers:
+        # O primeiro trator percebe o líder e publica o trilho único, suavizado uma vez (D9).
+        nodes.append(Node(package="ftl_trajectory", executable="trail_publisher",
+                          name="trail_publisher", namespace=followers[0],
+                          parameters=[*common, {"leader": f"/{leader}"}], output="screen"))
     for ahead, ns in zip([leader, *followers], followers):
-        nodes.append(Node(package="ftl_follower_pure_pursuit", executable="follower",
-                          name="follower", namespace=ns,
-                          parameters=[*common, {"ahead": f"/{ahead}"}], output="screen"))
+        if follower == "trail":
+            nodes.append(Node(package="ftl_trajectory", executable="trail_follower",
+                              name="follower", namespace=ns,
+                              parameters=[*common, {"ahead": f"/{ahead}",
+                                                    "trail": f"/{followers[0]}/ftl/trail"}],
+                              output="screen"))
+        else:
+            nodes.append(Node(package="ftl_follower_pure_pursuit", executable="follower",
+                              name="follower", namespace=ns,
+                              parameters=[*common, {"ahead": f"/{ahead}"}], output="screen"))
     return nodes
 
 
@@ -90,5 +108,8 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument("localization", default_value="pose_estimator",
                               description="pose_estimator (B0) or ukf (ftl_localization)."),
+        DeclareLaunchArgument("follower", default_value="pure_pursuit",
+                              description="pure_pursuit (B0, trail of the vehicle ahead) or "
+                                          "trail (single trail from ftl_trajectory)."),
         OpaqueFunction(function=launch_setup),
     ])

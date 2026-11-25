@@ -4,7 +4,8 @@ A escolha entre o `pose_estimator` da B0 e o UKF (F3.1, R4).
 - O cenário tem a chave `ftl.localization`, com `pose_estimator` (o padrão) e `ukf`; outro valor
   é rejeitado com a chave na mensagem.
 - `ftl_bringup.scenario.ftl_arguments(config)` monta os argumentos de texto do `ftl.launch.py`:
-  `use_sim_time`, `leader`, `followers`, `localization` e, se houver, `params_file`.
+  `use_sim_time`, `leader`, `followers`, `localization`, `follower` e, se houver,
+  `params_file`.
 - `ros2 launch ftl_bringup ftl.launch.py localization:=ukf followers:=1` sobe `ukf` e
   `gnss_odometry` em `/pickup` e `/tractor_1`, e nenhum `pose_estimator`; o padrão continua
   subindo o `pose_estimator`.
@@ -30,7 +31,8 @@ def test_scenario_key():
 def test_ftl_arguments():
     config = resolve('single_120', {'convoy.followers': 2, 'ftl.localization': 'ukf'})
     assert ftl_arguments(config) == {'use_sim_time': 'true', 'leader': 'pickup',
-                                     'followers': '2', 'localization': 'ukf'}
+                                     'followers': '2', 'localization': 'ukf',
+                                     'follower': 'pure_pursuit'}
     default = ftl_arguments(resolve('single_120'))
     assert default['localization'] == 'pose_estimator'
     assert 'params_file' not in default
@@ -74,3 +76,23 @@ def test_launch_default_keeps_the_baseline():
     found = _nodes(['followers:=1'])
     assert '/pickup/pose_estimator' in found and '/tractor_1/pose_estimator' in found, found
     assert '/pickup/ukf' not in found, found
+
+
+def test_follower_scenario_key():
+    assert resolve('single_120')['ftl']['follower'] == 'pure_pursuit'
+    config = resolve('single_120', {'ftl.follower': 'trail'})
+    assert ftl_arguments(config)['follower'] == 'trail'
+    with pytest.raises(ScenarioError, match='ftl.follower'):
+        resolve('single_120', {'ftl.follower': 'vector'})
+
+
+def test_launch_with_the_single_trail():
+    # O primeiro trator publica o trilho; cada trator roda o seguidor do trilho.
+    found = _nodes(['follower:=trail', 'followers:=2'])
+    assert '/tractor_1/trail_publisher' in found, found
+    assert '/tractor_2/trail_publisher' not in found, found
+    assert '/tractor_1/follower' in found and '/tractor_2/follower' in found, found
+
+
+def test_launch_default_has_no_trail():
+    assert '/tractor_1/trail_publisher' not in _nodes(['followers:=1'])
