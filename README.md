@@ -225,7 +225,9 @@ esterça pelo trilho e mede a distância pelo veículo da frente.
   trilho a uma distância de visada adiante; o espaçamento é a diferença entre os comprimentos de
   arco do veículo da frente e deste, projetados no trilho. Antes do começo e depois do fim do
   trilho, a projeção segue o trecho da ponta. Publica `cmd_vel`, `ftl/gap` e `ftl/cross_track`,
-  como a B0.
+  como a B0. Uma diferença: o comando nunca passa da velocidade medida mais `max_lead` (1 m/s).
+  Sem essa trava, um trator com o controlador de tração atrasado na partida via o comando subir
+  até 11,1 m/s parado e arrancava a 40 km/h.
 - **A escolha**: o argumento `follower:=trail` do `ftl.launch.py` (padrão `pure_pursuit`, a B0)
   ou a chave `ftl.follower=trail` do cenário. O E1 do artigo é `ftl.localization=ukf
   ftl.follower=trail`.

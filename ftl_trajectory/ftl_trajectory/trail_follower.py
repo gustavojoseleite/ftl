@@ -16,6 +16,12 @@ com outra referência.
   dele, a projeção segue o trecho da ponta, o que mede o trator que ainda não chegou ao trilho e
   o líder à frente do último ponto.
 
+- **Rampa sem acúmulo (anti-windup).** O comando nunca passa da velocidade medida mais
+  ``max_lead`` (1 m/s), e a rampa parte desse teto quando o comando anterior está acima dele.
+  Sem a trava, com o veículo parado (o controlador de tração do T4 subiu 36 s atrasado numa volta
+  do E1), o comando chegava a 11,1 m/s e o trator arrancava a 40 km/h quando o controlador
+  voltava. A B0 não tem essa trava.
+
 Para sem trilho (menos de dois pontos) ou com um dos estados obsoleto. Publica, como a B0,
 ``cmd_vel``, ``ftl/gap`` (m ao longo do trilho) e ``ftl/cross_track`` (m fora do trilho, positivo
 à esquerda).
@@ -50,7 +56,8 @@ def command(path, me, ahead, hints, params, v_now, dt):
         ahead: ``(x, y, rumo, v)`` do veículo da frente.
         hints: ``{'me': s, 'ahead': s}`` das projeções anteriores; atualizado aqui.
         params: Dicionário com ``gap``, ``min_gap``, ``k_gap``, ``v_max``, ``accel``,
-            ``lookahead_min``, ``lookahead_gain``, ``lookahead_max`` e ``min_radius``.
+            ``lookahead_min``, ``lookahead_gain``, ``lookahead_max``, ``min_radius`` e
+            ``max_lead`` (quanto o comando pode passar da velocidade medida, em m/s).
         v_now: Velocidade comandada no ciclo anterior, em m/s.
         dt: Período do ciclo, em s.
 
@@ -58,14 +65,16 @@ def command(path, me, ahead, hints, params, v_now, dt):
         ``(v, ômega, gap, lateral)``: velocidade e velocidade angular comandadas, o espaçamento
         ao longo do trilho e a distância deste veículo ao trilho.
     """
-    x, y, yaw, _ = me
+    x, y, yaw, v_meas = me
     s, lateral = path.project(x, y, hints.get('me'))
     s_ahead, _ = path.project(ahead[0], ahead[1], hints.get('ahead'))
     hints['me'], hints['ahead'] = s, s_ahead
     gap = s_ahead - s
     target = gap_speed(ahead[3], gap, params['gap'], params['k_gap'], params['v_max'],
                        params['min_gap'])
-    v = 0.0 if target == 0.0 else ramp(v_now, target, params['accel'], dt)
+    ceiling = max(0.0, v_meas) + params['max_lead']
+    v = 0.0 if target == 0.0 else min(ceiling, ramp(min(v_now, ceiling), target,
+                                                    params['accel'], dt))
     ld = lookahead(v, params['lookahead_min'], params['lookahead_gain'],
                    params['lookahead_max'])
     tx, ty = path.point_at(s + ld)
@@ -78,7 +87,7 @@ class TrailFollower(Node):
 
     DEFAULTS = {'gap': 10.0, 'min_gap': 5.0, 'k_gap': 0.4, 'v_max': 4.0, 'accel': 1.0,
                 'lookahead_min': 4.0, 'lookahead_gain': 1.0, 'lookahead_max': 10.0,
-                'min_radius': 3.2}
+                'min_radius': 3.2, 'max_lead': 1.0}
 
     def __init__(self):
         """Lê os parâmetros e liga os tópicos."""
