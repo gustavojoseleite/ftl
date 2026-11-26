@@ -8,6 +8,9 @@ Os rótulos da campanha são ``<caso>_p<ângulo>_<condição>`` (``b0_p90_c0``, 
 Grava, em inglês como o artigo:
 - ``cmp_paths.pdf``: o desvio para dentro da curva ao longo da rota, do líder ao T4, na mesma
   curva e na mesma semente: (a) B0 e (b) E1, com a mesma escala;
+- ``cmp_lap_p<ângulo>.pdf``: a volta inteira de cada mundo, desenrolada ao longo da rota: o
+  desvio lateral de cada veículo (positivo para dentro das curvas), na mesma semente, uma linha
+  por caso e condição;
 - ``cmp_error.pdf``: o erro nas retas e o corte de curva por posição na fila, B0 e E1, com o
   intervalo de confiança de 95% entre as execuções dos três mundos; uma coluna por condição;
 - ``cmp_corner_cut.tex`` e ``.csv``: o corte de curva por mundo, condição e trator, B0 e E1;
@@ -29,6 +32,7 @@ import pandas as pd
 import yaml
 
 COLUMN = 3.5  # largura de uma coluna do IEEE, em polegadas
+GAP = 2.0  # salto ao longo da rota que interrompe a linha, em m
 MARGIN = 12.0  # trecho de reta mostrado antes e depois da curva, em m
 SURFACE = '#fcfcfb'
 INK = '#0b0b0b'
@@ -111,6 +115,56 @@ def paths_figure(campaign, run, segment, out, plt):
     figure.tight_layout(pad=0.3, h_pad=0.6)
     figure.savefig(out / 'cmp_paths.pdf')
     figure.savefig(out / 'cmp_paths.png', dpi=200)
+    plt.close(figure)
+
+
+def _lateral(route, points):
+    """Dá as linhas ``(s ao longo da rota, desvio para dentro)`` da volta inteira."""
+    rows = np.array([route.project(float(x), float(y)) for x, y in points]).reshape(-1, 2)
+    # Os tratores largam atrás do início da rota, e a rota fechada projeta essas posições perto
+    # do fim dela: a volta só conta a partir da primeira passagem pelo começo.
+    start = np.flatnonzero(rows[:, 0] < 0.5 * route.length)
+    rows = rows[start[0]:] if start.size else rows[:0]
+    rows[:, 1] *= -1.0  # as curvas dos mundos são todas à direita: dentro é o lado negativo
+    # Onde a pose não avança ao longo da rota (o veículo parado no fim), a linha se interrompe.
+    gaps = np.flatnonzero(np.abs(np.diff(rows[:, 0])) > GAP) + 1
+    return np.insert(rows, gaps, np.nan, axis=0)
+
+
+def lap_figure(campaign, world, seed, out, plt):
+    """Desenha a volta inteira de um mundo, B0 e E1, nas duas condições de sensores."""
+    rows = [(case, cond) for cond in ('c0', 'field') for case in ('b0', 'e1')
+            if (Path(campaign) / f'{case}_p{world}_{cond}' / seed).is_dir()]
+    figure, axes = plt.subplots(len(rows), 1, figsize=(2 * COLUMN, 1.2 * len(rows) + 0.5),
+                                sharex=True, sharey=True, squeeze=False)
+    for axis, (case, cond) in zip(axes[:, 0], rows):
+        folder = Path(campaign) / f'{case}_p{world}_{cond}' / seed
+        config = yaml.safe_load((folder / 'config.yaml').read_text(encoding='utf-8'))
+        route = load_route(Path(config['world']).stem)
+        for part in segments(route):
+            if part.turn:
+                axis.axvspan(part.s0, part.s1, color=GRID, alpha=0.6, linewidth=0, zorder=0)
+        axis.axhline(0.0, color=ROUTE, linewidth=1.2, zorder=1)
+        for vehicle, points in paths(folder).items():
+            if vehicle == 'route':
+                continue
+            lateral = _lateral(route, points)
+            name = f'T{vehicle.split("_")[1]}' if vehicle.startswith('tractor_') else 'Leader'
+            axis.plot(lateral[:, 0], lateral[:, 1], color=_color(vehicle), linewidth=0.7,
+                      zorder=2, label=name)
+        axis.set_xlim(0.0, route.length)
+        axis.set_ylabel('deviation (m)')
+        axis.set_title(f'{CASES[case][1]}, {TITLES[cond].lower()}', loc='left', fontsize=8)
+    axes[0, 0].set_ylim(-0.6, 1.0)
+    handles, labels = axes[0, 0].get_legend_handles_labels()
+    order = sorted(range(len(labels)), key=lambda i: (labels[i] != 'Leader', labels[i]))
+    axes[0, 0].legend([handles[i] for i in order], [labels[i] for i in order], ncol=5,
+                      loc='upper right', handlelength=1.2, columnspacing=0.8)
+    axes[-1, 0].set_xlabel(f'distance along the route (m); {world}° curves shaded, '
+                           'positive deviation is toward the inside of the curves')
+    figure.tight_layout(pad=0.3, h_pad=0.5)
+    figure.savefig(out / f'cmp_lap_p{world}.pdf')
+    figure.savefig(out / f'cmp_lap_p{world}.png', dpi=200)
     plt.close(figure)
 
 
@@ -229,6 +283,7 @@ def main(argv=None):
                         help='world, condition and seed for the path figure; default p90_field/1')
     parser.add_argument('--out', required=True, help='output folder')
     parser.add_argument('--segment', default='curve_0', help='curve to show; default curve_0')
+    parser.add_argument('--seed', default='1', help='seed for the full-lap figures; default 1')
     args = parser.parse_args(argv)
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -237,6 +292,8 @@ def main(argv=None):
     out.mkdir(parents=True, exist_ok=True)
     runs = pd.read_csv(Path(args.campaign) / 'analysis' / 'metrics_runs.csv')
     paths_figure(args.campaign, args.run, args.segment, out, plt)
+    for world in (90, 60, 30):
+        lap_figure(args.campaign, world, args.seed, out, plt)
     error_figure(runs, out, plt)
     print(corner_cut_table(runs, out).to_string(index=False))
     print(summary_table(runs, out).to_string(index=False))

@@ -89,6 +89,11 @@ campanha final (a B0 não mudou):
 ## Resultados esperados
 - `cmp_paths.pdf`: o desvio para dentro da curva ao longo da rota, na 1ª curva de 90° em campo,
   semente 1: (a) B0, (b) E1.
+- `cmp_lap_p90.pdf`, `cmp_lap_p60.pdf` e `cmp_lap_p30.pdf`: a volta inteira de cada mundo,
+  desenrolada ao longo da rota, semente 1. Cada linha é um caso numa condição (B0 e E1, c0 e
+  campo) e mostra o desvio lateral de todos os veículos, positivo para dentro das curvas. Na
+  escala do mapa (centenas de metros) um desvio de 0,5 m não aparece; desenrolada, a volta mostra
+  as curvas e as retas na escala do erro.
 - `cmp_error.pdf`: o erro nas retas e o corte nas curvas por posição na fila, B0 e E1, com o
   intervalo de confiança de 95%.
 - `cmp_corner_cut.tex` e `cmp_summary.tex`: as tabelas acima.
@@ -113,6 +118,9 @@ ros2 run ftl_analysis analyze /workspace/experiments/comparativa \
 cd /workspace/experiments && python3 /workspace/src/ftl/docs/experimentos/comparativa-figuras.py \
   comparativa --out comparativa/figuras
 ```
+
+As figuras da volta inteira leem os bags de 12 voltas e levam uns 15 minutos; `--seed` escolhe
+a semente delas.
 
 O vídeo do E1 com rastros sai do mesmo script da B0:
 
