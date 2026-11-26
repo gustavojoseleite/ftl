@@ -37,6 +37,24 @@ def spacing(radius, d_base, d_min, dpsi_max):
     return max(d_min, min(d_base, radius * dpsi_max))
 
 
+def behind(anchor, x, y, yaw, tolerance):
+    """
+    Diz se uma posição ficou para trás de outra, no rumo do veículo.
+
+    Args:
+        anchor: ``(x, y)`` da última posição aceita, em m.
+        x: Posição nova, em m.
+        y: Posição nova, em m.
+        yaw: Rumo do veículo na posição nova, em rad.
+        tolerance: Quanto a posição pode recuar sem contar como recuo, em m.
+
+    Returns:
+        ``True`` se a posição nova está mais de ``tolerance`` atrás de ``anchor``.
+    """
+    ahead = (x - anchor[0]) * math.cos(yaw) + (y - anchor[1]) * math.sin(yaw)
+    return ahead < -tolerance
+
+
 class AdaptiveSampler:
     """Decide quais posições do veículo-alvo entram no vetor de *waypoints*."""
 

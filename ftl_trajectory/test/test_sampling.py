@@ -1,7 +1,7 @@
 """Testes da amostragem espacial adaptativa (F6.1, R1 e R3)."""
 import math
 
-from ftl_trajectory.sampling import AdaptiveSampler, spacing
+from ftl_trajectory.sampling import AdaptiveSampler, behind, spacing
 import pytest
 
 
@@ -56,3 +56,14 @@ def test_invalid_parameters():
         AdaptiveSampler(d_base=0.2, d_min=0.5)
     with pytest.raises(ValueError):
         AdaptiveSampler(dpsi_max=0.0)
+
+
+def test_behind_flags_a_step_back_along_the_heading():
+    north = math.pi / 2
+    assert behind((0.0, 0.0), 0.0, -4.8, north, 0.5)
+    assert not behind((0.0, 0.0), 0.0, -0.3, north, 0.5)
+    assert not behind((0.0, 0.0), 0.0, 0.4, north, 0.5)
+
+
+def test_behind_ignores_a_sideways_step():
+    assert not behind((0.0, 0.0), 0.0, 3.0, 0.0, 0.5)

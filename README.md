@@ -214,6 +214,9 @@ esterça pelo trilho e mede a distância pelo veículo da frente.
   (0,25 m). Numa curva de raio `R`, o espaçamento é `max(d_min, min(d_base, R · dpsi_max))`: a
   densidade cresce com a curvatura, de 1 ponto/m nas retas a 4 pontos/m nas curvas fechadas.
   Parado, o vetor não cresce.
+- **Sem ré.** Uma posição do líder mais de `max_back` (0,5 m) atrás da última aceita, no rumo
+  dele, fica fora do trilho. Na arrancada o UKF às vezes faz a estimativa recuar alguns metros, e
+  sem esse corte o trilho dobrava sobre si mesmo e prendia o primeiro trator na dobra.
 - **CCMA** (`ccma.py`), a Eq. 2.12 da monografia (Steinecker e Wuensche, 2023): média móvel
   gaussiana (`w_ma`, 5 pontos de cada lado) e a correção de curvatura que devolve cada ponto ao
   raio original, com uma segunda média sobre as correções (`w_cc`, 3 pontos). É incremental: um
