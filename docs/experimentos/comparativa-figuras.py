@@ -95,15 +95,18 @@ def paths_figure(campaign, run, segment, out, plt):
             if vehicle == 'route':
                 continue
             offset = _inward(route, part, points)
+            name = f'T{vehicle.split("_")[1]}' if vehicle.startswith('tractor_') else 'Leader'
             axis.plot(offset[:, 0], offset[:, 1], color=_color(vehicle), linewidth=1.0,
-                      zorder=2)
-            if vehicle.startswith('tractor_') and len(offset):
-                peak = int(np.argmax(offset[:, 1]))
-                axis.annotate(f'T{vehicle.split("_")[1]}', offset[peak], xytext=(3, 1),
-                              textcoords='offset points', fontsize=7, color=INK)
+                      zorder=2, label=name)
         axis.set_xlim(-MARGIN, part.s1 - part.s0 + MARGIN)
         axis.set_ylabel('inward deviation (m)')
         axis.set_title(f'{tag} {CASES[case][1]}', loc='left', fontsize=8)
+    # As curvas do E1 se sobrepõem, então a identidade vem de uma legenda só, no alto do painel
+    # (b), que fica vazio.
+    handles, labels = axes[0].get_legend_handles_labels()
+    order = sorted(range(len(labels)), key=lambda i: (labels[i] != 'Leader', labels[i]))
+    axes[1].legend([handles[i] for i in order], [labels[i] for i in order], ncol=5,
+                   loc='upper right', handlelength=1.2, columnspacing=0.8)
     axes[1].set_xlabel('distance from curve entry along the route (m)')
     figure.tight_layout(pad=0.3, h_pad=0.6)
     figure.savefig(out / 'cmp_paths.pdf')
@@ -123,7 +126,7 @@ def error_figure(runs, out, plt):
     conds = [c for c in ('c0', 'field') if any(summary.label.str.endswith(c))]
     figure, axes = plt.subplots(2, len(conds), squeeze=False, sharey='row', sharex=True,
                                 figsize=(COLUMN, 3.0))
-    rows = (('straight', 'Straights: lateral\nRMSE (m)'), ('curve', 'Curves: corner\ncut (m)'))
+    rows = (('straight', 'Straights: RMSE (m)'), ('curve', 'Curves: corner cut (m)'))
     shift = {'b0': -0.08, 'e1': 0.08}
     for r, (kind, ylabel) in enumerate(rows):
         for c, cond in enumerate(conds):
@@ -149,8 +152,8 @@ def error_figure(runs, out, plt):
         axes[r, 0].set_ylim(0.0, 1.05 * top)
     axes[1, 0].legend(loc='upper left', handlelength=1.2)
     figure.tight_layout(pad=0.3, h_pad=0.4, w_pad=0.6)
-    figure.savefig(out / 'cmp_error.pdf')
-    figure.savefig(out / 'cmp_error.png', dpi=200)
+    figure.savefig(out / 'cmp_error.pdf', bbox_inches='tight', pad_inches=0.03)
+    figure.savefig(out / 'cmp_error.png', dpi=200, bbox_inches='tight', pad_inches=0.03)
     plt.close(figure)
 
 
