@@ -94,6 +94,12 @@ campanha final (a B0 não mudou):
   campo) e mostra o desvio lateral de todos os veículos, positivo para dentro das curvas. Na
   escala do mapa (centenas de metros) um desvio de 0,5 m não aparece; desenrolada, a volta mostra
   as curvas e as retas na escala do erro.
+- `cmp_map_p90.pdf`, `cmp_map_p60.pdf` e `cmp_map_p30.pdf`: o caminho de todos os veículos no
+  mapa, semente 1, B0 e E1 lado a lado, sensores c0 e de campo. O desvio à rota está ampliado
+  (35× a 40×) e as linhas tracejadas marcam ±0,5 m. A ampliação fica abaixo do raio das curvas
+  sobre o corte máximo, senão o pico passa do centro do arco e aparece virado para fora; mesmo
+  assim, perto das curvas ela encurta o desvio para dentro, e o valor do corte se lê nas
+  `cmp_lap`.
 - `cmp_error.pdf`: o erro nas retas e o corte nas curvas por posição na fila, B0 e E1, com o
   intervalo de confiança de 95%.
 - `cmp_corner_cut.tex` e `cmp_summary.tex`: as tabelas acima.

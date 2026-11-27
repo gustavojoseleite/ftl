@@ -11,6 +11,8 @@ Grava, em inglês como o artigo:
 - ``cmp_lap_p<ângulo>.pdf``: a volta inteira de cada mundo, desenrolada ao longo da rota: o
   desvio lateral de cada veículo (positivo para dentro das curvas), na mesma semente, uma linha
   por caso e condição;
+- ``cmp_map_p<ângulo>.pdf``: o caminho de todos os veículos no mapa, na mesma semente, B0 e E1
+  lado a lado nas duas condições, com o desvio à rota ampliado para ficar visível;
 - ``cmp_error.pdf``: o erro nas retas e o corte de curva por posição na fila, B0 e E1, com o
   intervalo de confiança de 95% entre as execuções dos três mundos; uma coluna por condição;
 - ``cmp_corner_cut.tex`` e ``.csv``: o corte de curva por mundo, condição e trator, B0 e E1;
@@ -32,7 +34,11 @@ import pandas as pd
 import yaml
 
 COLUMN = 3.5  # largura de uma coluna do IEEE, em polegadas
+STEP = 0.1  # passo mínimo entre os pontos projetados, em m
 GAP = 2.0  # salto ao longo da rota que interrompe a linha, em m
+# Ampliação do desvio no mapa, por mundo. O corte para dentro, ampliado, tem de ficar menor que o
+# raio das curvas (24 a 30 m): se passar do centro do arco, o desenho vira o pico para fora.
+EXAGGERATION = {90: 35, 60: 35, 30: 40}
 MARGIN = 12.0  # trecho de reta mostrado antes e depois da curva, em m
 SURFACE = '#fcfcfb'
 INK = '#0b0b0b'
@@ -118,53 +124,142 @@ def paths_figure(campaign, run, segment, out, plt):
     plt.close(figure)
 
 
-def _lateral(route, points):
-    """Dá as linhas ``(s ao longo da rota, desvio para dentro)`` da volta inteira."""
-    rows = np.array([route.project(float(x), float(y)) for x, y in points]).reshape(-1, 2)
-    # Os tratores largam atrás do início da rota, e a rota fechada projeta essas posições perto
-    # do fim dela: a volta só conta a partir da primeira passagem pelo começo.
-    start = np.flatnonzero(rows[:, 0] < 0.5 * route.length)
-    rows = rows[start[0]:] if start.size else rows[:0]
-    rows[:, 1] *= -1.0  # as curvas dos mundos são todas à direita: dentro é o lado negativo
-    # Onde a pose não avança ao longo da rota (o veículo parado no fim), a linha se interrompe.
-    gaps = np.flatnonzero(np.abs(np.diff(rows[:, 0])) > GAP) + 1
-    return np.insert(rows, gaps, np.nan, axis=0)
+def _project(folder, route, cache):
+    """
+    Projeta na rota o caminho real de cada veículo de uma execução, com cache em disco.
+
+    Dá ``{veículo: matriz (n, 2) de (s ao longo da rota, desvio lateral, positivo à esquerda)}``,
+    da primeira passagem pelo começo da rota em diante, com ``nan`` onde a pose para de avançar.
+    """
+    name = cache / ('_'.join(Path(folder).parts[-2:]) + '.npz')
+    if name.exists():
+        return dict(np.load(name))
+    found = {}
+    for vehicle, points in paths(folder).items():
+        if vehicle == 'route':
+            continue
+        # Um ponto a cada STEP m basta para o desenho, e a projeção é o que custa.
+        keep = [0]
+        for i in range(1, len(points)):
+            if np.hypot(*(points[i] - points[keep[-1]])) >= STEP:
+                keep.append(i)
+        rows = np.array([route.project(float(x), float(y))
+                         for x, y in points[keep]]).reshape(-1, 2)
+        # Os tratores largam atrás do início da rota, e a rota fechada projeta essas posições
+        # perto do fim dela: a volta só conta a partir da primeira passagem pelo começo.
+        start = np.flatnonzero(rows[:, 0] < 0.5 * route.length)
+        rows = rows[start[0]:] if start.size else rows[:0]
+        gaps = np.flatnonzero(np.abs(np.diff(rows[:, 0])) > GAP) + 1
+        found[vehicle] = np.insert(rows, gaps, np.nan, axis=0)
+    cache.mkdir(parents=True, exist_ok=True)
+    np.savez(name, **found)
+    return found
 
 
-def lap_figure(campaign, world, seed, out, plt):
-    """Desenha a volta inteira de um mundo, B0 e E1, nas duas condições de sensores."""
-    rows = [(case, cond) for cond in ('c0', 'field') for case in ('b0', 'e1')
+def _name(vehicle):
+    """Dá o rótulo curto do veículo: ``Leader`` ou ``T<n>``."""
+    return f'T{vehicle.split("_")[1]}' if vehicle.startswith('tractor_') else 'Leader'
+
+
+def _legend(axis, **kwargs):
+    """Põe a legenda dos veículos, o líder primeiro."""
+    handles, labels = axis.get_legend_handles_labels()
+    order = sorted(range(len(labels)), key=lambda i: (labels[i] != 'Leader', labels[i]))
+    axis.legend([handles[i] for i in order], [labels[i] for i in order], **kwargs)
+
+
+def _rows(campaign, world, seed):
+    """Dá os pares ``(caso, condição)`` que existem para um mundo e uma semente."""
+    return [(case, cond) for cond in ('c0', 'field') for case in ('b0', 'e1')
             if (Path(campaign) / f'{case}_p{world}_{cond}' / seed).is_dir()]
+
+
+def _route(campaign, world, seed, case, cond):
+    """Dá a pasta da execução e a rota do mundo dela."""
+    folder = Path(campaign) / f'{case}_p{world}_{cond}' / seed
+    config = yaml.safe_load((folder / 'config.yaml').read_text(encoding='utf-8'))
+    return folder, load_route(Path(config['world']).stem)
+
+
+def lap_figure(campaign, world, seed, out, cache, plt):
+    """Desenha a volta inteira de um mundo, desenrolada, B0 e E1 nas duas condições."""
+    rows = _rows(campaign, world, seed)
     figure, axes = plt.subplots(len(rows), 1, figsize=(2 * COLUMN, 1.2 * len(rows) + 0.5),
                                 sharex=True, sharey=True, squeeze=False)
     for axis, (case, cond) in zip(axes[:, 0], rows):
-        folder = Path(campaign) / f'{case}_p{world}_{cond}' / seed
-        config = yaml.safe_load((folder / 'config.yaml').read_text(encoding='utf-8'))
-        route = load_route(Path(config['world']).stem)
+        folder, route = _route(campaign, world, seed, case, cond)
         for part in segments(route):
             if part.turn:
                 axis.axvspan(part.s0, part.s1, color=GRID, alpha=0.6, linewidth=0, zorder=0)
         axis.axhline(0.0, color=ROUTE, linewidth=1.2, zorder=1)
-        for vehicle, points in paths(folder).items():
-            if vehicle == 'route':
-                continue
-            lateral = _lateral(route, points)
-            name = f'T{vehicle.split("_")[1]}' if vehicle.startswith('tractor_') else 'Leader'
-            axis.plot(lateral[:, 0], lateral[:, 1], color=_color(vehicle), linewidth=0.7,
-                      zorder=2, label=name)
+        for vehicle, rows_ in _project(folder, route, cache).items():
+            # As curvas dos mundos são todas à direita: dentro é o lado negativo do desvio.
+            axis.plot(rows_[:, 0], -rows_[:, 1], color=_color(vehicle), linewidth=0.7,
+                      zorder=2, label=_name(vehicle))
         axis.set_xlim(0.0, route.length)
         axis.set_ylabel('deviation (m)')
         axis.set_title(f'{CASES[case][1]}, {TITLES[cond].lower()}', loc='left', fontsize=8)
     axes[0, 0].set_ylim(-0.6, 1.0)
-    handles, labels = axes[0, 0].get_legend_handles_labels()
-    order = sorted(range(len(labels)), key=lambda i: (labels[i] != 'Leader', labels[i]))
-    axes[0, 0].legend([handles[i] for i in order], [labels[i] for i in order], ncol=5,
-                      loc='upper right', handlelength=1.2, columnspacing=0.8)
+    _legend(axes[0, 0], ncol=5, loc='upper right', handlelength=1.2, columnspacing=0.8)
     axes[-1, 0].set_xlabel(f'distance along the route (m); {world}° curves shaded, '
                            'positive deviation is toward the inside of the curves')
     figure.tight_layout(pad=0.3, h_pad=0.5)
     figure.savefig(out / f'cmp_lap_p{world}.pdf')
     figure.savefig(out / f'cmp_lap_p{world}.png', dpi=200)
+    plt.close(figure)
+
+
+def map_figure(campaign, world, seed, out, cache, plt):
+    """
+    Desenha o caminho de todos os veículos no mapa, B0 e E1, com o desvio à rota ampliado.
+
+    Cada pose vai para ``rota(s) + EXAGGERATION[world] × desvio × normal``: o desenho da rota
+    fica em escala real e o desvio, que tem décimos de metro, fica visível. As linhas
+    tracejadas marcam ±0,5 m da rota, na mesma ampliação.
+    """
+    gain = EXAGGERATION[world]
+    cases, conds = ('b0', 'e1'), [c for c in ('c0', 'field')
+                                  if any(r[1] == c for r in _rows(campaign, world, seed))]
+    figure, axes = plt.subplots(len(conds), 2, figsize=(2 * COLUMN, 3.5 * len(conds)),
+                                squeeze=False)
+    for r, cond in enumerate(conds):
+        for c, case in enumerate(cases):
+            axis = axes[r, c]
+            folder, route = _route(campaign, world, seed, case, cond)
+            along = np.arange(0.0, route.length, 0.5)
+            base = np.array([route.at(float(s)) for s in along])
+            normal = np.column_stack([-np.sin(base[:, 2]), np.cos(base[:, 2])])
+            for band in (-0.5, 0.5):
+                edge = base[:, :2] + gain * band * normal
+                axis.plot(edge[:, 0], edge[:, 1], color=ROUTE, linewidth=0.6,
+                          linestyle=(0, (3, 3)), zorder=1)
+            axis.plot(base[:, 0], base[:, 1], color=ROUTE, linewidth=1.2, zorder=1)
+            for vehicle, rows_ in _project(folder, route, cache).items():
+                s, lateral = rows_[:, 0], rows_[:, 1]
+                ok = np.isfinite(s)
+                at = np.full((len(s), 3), np.nan)
+                at[ok] = [route.at(float(v)) for v in s[ok]]
+                x = at[:, 0] - gain * lateral * np.sin(at[:, 2])
+                y = at[:, 1] + gain * lateral * np.cos(at[:, 2])
+                axis.plot(x, y, color=_color(vehicle), linewidth=0.7, zorder=2,
+                          label=_name(vehicle))
+            axis.set_aspect('equal')
+            axis.grid(False)
+            axis.set_xticks([])
+            axis.set_yticks([])
+            for spine in axis.spines.values():
+                spine.set_visible(False)
+            axis.set_title(f'{CASES[case][1]}, {TITLES[cond].lower()}', loc='left',
+                           fontsize=8)
+    handles, labels = axes[0, 0].get_legend_handles_labels()
+    order = sorted(range(len(labels)), key=lambda i: (labels[i] != 'Leader', labels[i]))
+    figure.legend([handles[i] for i in order], [labels[i] for i in order], ncol=5,
+                  loc='lower center', handlelength=1.2, columnspacing=0.8)
+    figure.suptitle(f'{world}° curves: deviation from the route magnified {gain}×; '
+                    'dashed lines at ±0.5 m', fontsize=8, color=MUTED, y=0.995)
+    figure.tight_layout(pad=0.3, h_pad=1.2, w_pad=0.8, rect=(0, 0.03, 1, 1))
+    figure.savefig(out / f'cmp_map_p{world}.pdf')
+    figure.savefig(out / f'cmp_map_p{world}.png', dpi=200)
     plt.close(figure)
 
 
@@ -292,8 +387,10 @@ def main(argv=None):
     out.mkdir(parents=True, exist_ok=True)
     runs = pd.read_csv(Path(args.campaign) / 'analysis' / 'metrics_runs.csv')
     paths_figure(args.campaign, args.run, args.segment, out, plt)
+    cache = out / 'cache'
     for world in (90, 60, 30):
-        lap_figure(args.campaign, world, args.seed, out, plt)
+        lap_figure(args.campaign, world, args.seed, out, cache, plt)
+        map_figure(args.campaign, world, args.seed, out, cache, plt)
     error_figure(runs, out, plt)
     print(corner_cut_table(runs, out).to_string(index=False))
     print(summary_table(runs, out).to_string(index=False))
